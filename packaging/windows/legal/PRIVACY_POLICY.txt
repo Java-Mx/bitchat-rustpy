@@ -10,7 +10,7 @@ regulated deployment.
 
 Effective Date: November 9, 2026
 Applicable Release: BitChat v0.3.1
-Repository: https://github.com/Java-Mx/bitchat-python
+Repository: https://github.com/Java-Mx/bitchat-rustpy
 
 
 1. OVERVIEW & ARCHITECTURE PHILOSOPHY
@@ -124,5 +124,5 @@ BitChat makes no runtime requests to third-party servers. Software download
 hosts (GitHub Releases, PyPI, WinGet, Flathub) process download requests under
 their own privacy policies.
 
-- Repository & Issues: https://github.com/Java-Mx/bitchat-python/issues
-- Security Reports: https://github.com/Java-Mx/bitchat-python/security/advisories/new
+- Repository & Issues: https://github.com/Java-Mx/bitchat-rustpy/issues
+- Security Reports: https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new

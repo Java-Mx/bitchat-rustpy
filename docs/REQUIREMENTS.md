@@ -2,7 +2,7 @@
 
 ## 1. System Overview & Architectural Philosophy
 
-**BitChat** (`bitchat-python` `v0.3.1`) is a peer-to-peer encrypted terminal messenger operating over **Bluetooth Low Energy (BLE)** and **Local Area Network (LAN)** transports. It combines a high-performance **Rust native core (`bitchat._bitchat_core`)** built with PyO3 and Maturin with an asynchronous **Python 3.10+ (`asyncio` + `Textual`)** application and terminal UI layer.
+**BitChat** (`bitchat-rustpy` `v0.3.1`) is a peer-to-peer encrypted terminal messenger operating over **Bluetooth Low Energy (BLE)** and **Local Area Network (LAN)** transports. It combines a high-performance **Rust native core (`bitchat._bitchat_core`)** built with PyO3 and Maturin with an asynchronous **Python 3.10+ (`asyncio` + `Textual`)** application and terminal UI layer.
 
 ### Core Architectural Principles
 

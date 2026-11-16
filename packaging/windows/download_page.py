@@ -59,16 +59,16 @@ def generate_download_experience(
 
     size_display = format_file_size(installer_size_bytes)
     release_url = (
-        f"https://github.com/Java-Mx/bitchat-python/releases/download/"
+        f"https://github.com/Java-Mx/bitchat-rustpy/releases/download/"
         f"v{version}/{installer_filename}"
     )
-    releases_page_url = "https://github.com/Java-Mx/bitchat-python/releases"
-    terms_url = "https://github.com/Java-Mx/bitchat-python/blob/main/TERMS_OF_USE.md"
+    releases_page_url = "https://github.com/Java-Mx/bitchat-rustpy/releases"
+    terms_url = "https://github.com/Java-Mx/bitchat-rustpy/blob/main/TERMS_OF_USE.md"
     privacy_url = (
-        "https://github.com/Java-Mx/bitchat-python/blob/main/PRIVACY_POLICY.md"
+        "https://github.com/Java-Mx/bitchat-rustpy/blob/main/PRIVACY_POLICY.md"
     )
-    security_url = "https://github.com/Java-Mx/bitchat-python/blob/main/SECURITY.md"
-    changelog_url = "https://github.com/Java-Mx/bitchat-python/blob/main/CHANGELOG.md"
+    security_url = "https://github.com/Java-Mx/bitchat-rustpy/blob/main/SECURITY.md"
+    changelog_url = "https://github.com/Java-Mx/bitchat-rustpy/blob/main/CHANGELOG.md"
 
     if signature_valid:
         sig_badge_html = (
@@ -293,7 +293,7 @@ def generate_download_experience(
     <header>
       <img src="assets/bitchat-wordmark-dark.png" alt="BitChat" class="brand-wordmark" />
       <nav class="nav-links">
-        <a href="https://github.com/Java-Mx/bitchat-python">GitHub Repository</a>
+        <a href="https://github.com/Java-Mx/bitchat-rustpy">GitHub Repository</a>
         <a href="{releases_page_url}">All Releases</a>
         <a href="{terms_url}">Terms of Use</a>
         <a href="{privacy_url}">Privacy Policy</a>
@@ -374,7 +374,7 @@ def generate_download_experience(
           Download {installer_filename} ({size_display})
         </a>
         <p class="legal-note">
-          Official source: <a href="{releases_page_url}">GitHub Releases (Java-Mx/bitchat-python)</a>
+          Official source: <a href="{releases_page_url}">GitHub Releases (Java-Mx/bitchat-rustpy)</a>
         </p>
       </div>
     </div>
@@ -402,6 +402,7 @@ def generate_download_experience(
 .\\{installer_filename}
 
 # Or install via Windows Package Manager (WinGet):
+winget install bitchat-rustpy
 winget install Java-Mx.BitChat</pre>
       <p><strong>4. Launch BitChat from a new PowerShell window:</strong></p>
       <pre>bitchat
@@ -505,17 +506,16 @@ Before downloading or installing BitChat, please review:
 
 ## All Official `v{version}` Release Assets & SHA-256 Checksums
 
-All 13 release artifacts are available on the [Official GitHub Release (`v{version}`)](https://github.com/Java-Mx/bitchat-python/releases/tag/v{version}):
+All official release artifacts are available on the [Official GitHub Release (`v{version}`)](https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v{version}):
 
 | Platform / Format | Asset Filename | SHA-256 Checksum |
 |---|---|---|
 | **Windows x64 Installer** | `{installer_filename}` | `{installer_sha256}` |
-| **Linux Debian/Ubuntu (`amd64`)** | `bitchat_{version}_amd64.deb` | `78102FE305DFC09FFCC2B125C2E3F415800673BEFE5BA8712224B96AFD7C466F` |
-| **Linux AppImage (`x86_64`)** | `BitChat-{version}-x86_64.AppImage` | `3DE90657D6383DC11A753CA008B9162BC74C46AD8F5158F4B956F96393773152` |
-| **Linux Flatpak (`x86_64`)** | `BitChat-{version}-x86_64.flatpak` | `DBCFDBB8456A5D68BA87003A328B1D53C00AA0B400B104DB0D353A31C114FA95` |
-| **Windows Wheel (`cp312`)** | `bitchat_python-{version}-cp312-cp312-win_amd64.whl` | `303C0AE1D97D0C5594A222EC74FC142158DF9D45BBF37FCBC00AE3766DC3CA08` |
-| **Linux Wheel (`cp312`)** | `bitchat_python-{version}-cp312-cp312-linux_x86_64.whl` | `BB13B8C8469ED15EC0AA1E176D84F3EDB37010903DE3C9A3B76B6F0C08B230E3` |
-| **Source Archive (`sdist`)** | `bitchat_python-{version}.tar.gz` | `8AD4DC5DCDA52E2A027E2EB6D12A13E7FAEF5F350B972F94093EB4A7B80684E9` |
+| **Linux Debian/Ubuntu (`amd64`)** | `bitchat_{version}_amd64.deb` | `42D60D72F6DD7FA78D2A2056388A716054B00A25EDDE451E9A848F5E6E0358F8` |
+| **Linux AppImage (`x86_64`)** | `BitChat-{version}-x86_64.AppImage` | `04F0D73BAA3D9063BD72C4C510CBDFD2B041E16B3EA5174411346920B35457E8` |
+| **Windows Wheel (`cp312-abi3`)** | `bitchat-{version}-cp312-abi3-win_amd64.whl` | `B5F7DB74CF31F39260106C3FB6FC66F5E090AC9BACB1349B8E1D2849ACF7C5D0` |
+| **Linux Wheel (`cp312-abi3`)** | `bitchat-{version}-cp312-abi3-linux_x86_64.whl` | `82E238D949B6103FA36D29B07FAB4FE748014954D9A56DAB284E202672265A2B` |
+| **Source Archive (`sdist`)** | `bitchat-{version}.tar.gz` | `3743DD4F3EF00543C2D759B8B33BDE8010A2DA6B513B2B59ACFB50D8B6969067` |
 
 ---
 

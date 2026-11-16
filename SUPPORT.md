@@ -44,7 +44,7 @@ BitChat stores its local configuration, cryptographic identity, and rotating dia
 
 ### 3.1 "`bitchat` is not recognized" After Installation or Uninstall
 
-- **After Installing via `pip`:** Ensure your Python `Scripts` directory (Windows) or `~/.local/bin` (Linux) is on your `PATH`, or use the standalone installer / `uv tool install bitchat-python`.
+- **After Installing via `pip`:** Ensure your Python `Scripts` directory (Windows) or `~/.local/bin` (Linux) is on your `PATH`, or use the standalone installer / `uv tool install bitchat-rustpy`.
 - **After Uninstalling on Windows:** If `where.exe bitchat` still shows a path such as `C:\Users\<user>\AppData\Local\Programs\Python\Python3XX\Scripts\bitchat.exe`, a secondary Python installation still has a console-script shim installed. Run:
   ```powershell
   bitchat --uninstall
@@ -88,9 +88,9 @@ Before filing a ticket, check the relevant guide in [`docs/INDEX.md`](docs/INDEX
 
 | Topic | Where to Report |
 | :--- | :--- |
-| **Bug Reports** | [Open a Bug Report](https://github.com/Java-Mx/bitchat-python/issues/new?template=bug_report.md) (include `bitchat --version` and `bitchat --configure` output) |
-| **Feature Requests** | [Open a Feature Request](https://github.com/Java-Mx/bitchat-python/issues/new?template=feature_request.md) |
-| **Protocol / Wire Framing Issues** | [Open a Protocol Issue](https://github.com/Java-Mx/bitchat-python/issues/new?template=protocol_issue.md) |
-| **Cross-Client Interoperability** | [Open an Interoperability Issue](https://github.com/Java-Mx/bitchat-python/issues/new?template=interoperability_issue.md) |
-| **Security Vulnerabilities** | **DO NOT open a public issue.** Report privately via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-python/security/advisories/new) (see [`SECURITY.md`](SECURITY.md)). |
+| **Bug Reports** | [Open a Bug Report](https://github.com/Java-Mx/bitchat-rustpy/issues/new?template=bug_report.md) (include `bitchat --version` and `bitchat --configure` output) |
+| **Feature Requests** | [Open a Feature Request](https://github.com/Java-Mx/bitchat-rustpy/issues/new?template=feature_request.md) |
+| **Protocol / Wire Framing Issues** | [Open a Protocol Issue](https://github.com/Java-Mx/bitchat-rustpy/issues/new?template=protocol_issue.md) |
+| **Cross-Client Interoperability** | [Open an Interoperability Issue](https://github.com/Java-Mx/bitchat-rustpy/issues/new?template=interoperability_issue.md) |
+| **Security Vulnerabilities** | **DO NOT open a public issue.** Report privately via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new) (see [`SECURITY.md`](SECURITY.md)). |
 | **Code of Conduct Concerns** | See the reporting instructions in [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). |

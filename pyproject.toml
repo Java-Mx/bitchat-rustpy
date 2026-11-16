@@ -5,14 +5,14 @@ build-backend = "maturin"
 [project]
 name = "bitchat"
 version = "0.3.1"
-description = "Python terminal client for the BitChat protocol over Bluetooth Low Energy"
+description = "Decentralized, encrypted peer-to-peer mesh messaging over Bluetooth LE and local networks, built with Python and accelerated by Rust"
 readme = "README.md"
 license = "MIT"
 requires-python = ">= 3.12"
 authors = [
     { name = "BitChat Contributors" },
 ]
-keywords = ["bluetooth", "ble", "chat", "mesh", "p2p", "terminal"]
+keywords = ["bitchat", "bitchat-rustpy", "bluetooth", "ble", "chat", "mesh", "p2p", "rust", "terminal"]
 classifiers = [
     "Development Status :: 1 - Planning",
     "Environment :: Console",
@@ -36,10 +36,10 @@ dependencies = [
 bitchat = "bitchat.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/Java-Mx/bitchat-python"
-Repository = "https://github.com/Java-Mx/bitchat-python"
-Issues = "https://github.com/Java-Mx/bitchat-python/issues"
-Documentation = "https://github.com/Java-Mx/bitchat-python/tree/main/docs"
+Homepage = "https://java-mx.github.io/bitchat-rustpy/"
+Repository = "https://github.com/Java-Mx/bitchat-rustpy"
+Issues = "https://github.com/Java-Mx/bitchat-rustpy/issues"
+Documentation = "https://github.com/Java-Mx/bitchat-rustpy/tree/main/docs"
 
 [dependency-groups]
 dev = [

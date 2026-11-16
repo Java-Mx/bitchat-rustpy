@@ -1,6 +1,6 @@
 # Threat Model
 
-This document outlines the threat model for `bitchat-python`, covering the network environment, trust assumptions, threat vectors, and defense mechanisms. It specifically details defenses implemented at the binary packet layer (Phase 3 & Hardening) as well as planned defenses for upcoming cryptographic layers (Phase 4).
+This document outlines the threat model for `bitchat-rustpy`, covering the network environment, trust assumptions, threat vectors, and defense mechanisms. It specifically details defenses implemented at the binary packet layer (Phase 3 & Hardening) as well as planned defenses for upcoming cryptographic layers (Phase 4).
 
 ---
 

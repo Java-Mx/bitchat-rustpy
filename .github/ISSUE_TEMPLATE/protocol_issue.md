@@ -6,7 +6,7 @@ labels: ["protocol", "bug"]
 assignees: []
 ---
 
-> **Security Notice:** Do **NOT** report exploitable parser, framing, or cryptographic vulnerabilities in public issues. Use [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-python/security/advisories/new) as described in [`SECURITY.md`](../../SECURITY.md).
+> **Security Notice:** Do **NOT** report exploitable parser, framing, or cryptographic vulnerabilities in public issues. Use [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new) as described in [`SECURITY.md`](../../SECURITY.md).
 
 ## Protocol Component
 <!-- Specify which protocol layer or component is involved:
@@ -22,10 +22,10 @@ assignees: []
 <!-- Describe how the BitChat reference implementation (e.g., bitchat-rust, official spec) behaves under identical conditions. Reference specific protocol documentation sections if applicable. -->
 
 ## Observed Behavior
-<!-- Describe what bitchat-python actually does that diverges from the protocol specification or reference implementation. -->
+<!-- Describe what bitchat-rustpy actually does that diverges from the protocol specification or reference implementation. -->
 
 ## Expected Behavior
-<!-- Describe what bitchat-python should do in conformance with the BitChat protocol. -->
+<!-- Describe what bitchat-rustpy should do in conformance with the BitChat protocol. -->
 
 ## Packet / Test Information
 <!-- Provide packet captures (Wireshark/pcap), hex dumps, raw payload bytes, or reproducible test cases showing the issue. -->

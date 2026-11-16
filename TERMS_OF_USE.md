@@ -4,7 +4,7 @@
 
 **Effective Date:** November 9, 2026  
 **Applicable Release:** BitChat `v0.3.1`  
-**Repository:** [https://github.com/Java-Mx/bitchat-python](https://github.com/Java-Mx/bitchat-python)
+**Repository:** [https://github.com/Java-Mx/bitchat-rustpy](https://github.com/Java-Mx/bitchat-rustpy)
 
 ---
 
@@ -90,6 +90,6 @@ Consistent with the [MIT License](LICENSE):
 
 ## 10. Contact & Reporting
 
-- **General Support & Bug Reports:** See [`SUPPORT.md`](SUPPORT.md) or open an issue at [https://github.com/Java-Mx/bitchat-python/issues](https://github.com/Java-Mx/bitchat-python/issues)
-- **Security Vulnerabilities:** Do **not** file public issues for security vulnerabilities. Use [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-python/security/advisories/new) as described in [`SECURITY.md`](SECURITY.md).
+- **General Support & Bug Reports:** See [`SUPPORT.md`](SUPPORT.md) or open an issue at [https://github.com/Java-Mx/bitchat-rustpy/issues](https://github.com/Java-Mx/bitchat-rustpy/issues)
+- **Security Vulnerabilities:** Do **not** file public issues for security vulnerabilities. Use [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new) as described in [`SECURITY.md`](SECURITY.md).
 - **Code of Conduct:** Community participation is governed by [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).

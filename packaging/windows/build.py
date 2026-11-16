@@ -201,9 +201,9 @@ def sign_binary(
             "/tr",
             ts_url,
             "/d",
-            "BitChat",
+            "BitChat RustPy",
             "/du",
-            "https://github.com/Java-Mx/bitchat-python",
+            "https://github.com/Java-Mx/bitchat-rustpy",
         ]
 
         if cert_b64:
@@ -564,7 +564,6 @@ Moniker: bitchat-rustpy
 Tags:
   - bitchat
   - bitchat-rustpy
-  - bitchat-rustpyl
   - ble
   - bluetooth
   - chat
@@ -607,7 +606,6 @@ Moniker: bitchat-rustpy
 Tags:
   - bitchat
   - bitchat-rustpy
-  - bitchat-rustpyl
   - ble
   - bluetooth
   - chat

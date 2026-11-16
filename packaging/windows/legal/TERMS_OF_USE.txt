@@ -11,7 +11,7 @@ counsel.
 
 Effective Date: November 9, 2026
 Applicable Release: BitChat v0.3.1
-Repository: https://github.com/Java-Mx/bitchat-python
+Repository: https://github.com/Java-Mx/bitchat-rustpy
 
 
 1. RELATIONSHIP TO THE MIT LICENSE
@@ -94,5 +94,5 @@ SOFTWARE.
 
 7. CONTACT & REPORTING
 ----------------------
-- General Support & Issues: https://github.com/Java-Mx/bitchat-python/issues
-- Private Security Advisories: https://github.com/Java-Mx/bitchat-python/security/advisories/new
+- General Support & Issues: https://github.com/Java-Mx/bitchat-rustpy/issues
+- Private Security Advisories: https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new

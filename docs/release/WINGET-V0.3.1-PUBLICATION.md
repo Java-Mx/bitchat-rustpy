@@ -54,14 +54,13 @@ The `Java-Mx.BitChat.yaml` file uploaded as a release asset on `v0.3.1` was insp
 ### 3.2 Updating Product Branding & Moniker
 - **`PackageName`:** Updated to `BitChat RustPy` in `Java-Mx.BitChat.locale.en-US.yaml`.
 - **`Moniker`:** Set to `bitchat-rustpy`.
-- **`Tags`:** Includes `bitchat`, `bitchat-rustpy`, `bitchat-rustpyl`, `ble`, `bluetooth`, `chat`, `lan`, `mesh`, `p2p`, `python`, `rust`, `terminal`, and `tui`.
+- **`Tags`:** Includes `bitchat`, `bitchat-rustpy`, `ble`, `bluetooth`, `chat`, `lan`, `mesh`, `p2p`, `python`, `rust`, `terminal`, and `tui`.
 - **How WinGet Resolves Queries:**
   - By default, `winget install <query>` matches case-insensitively against `PackageIdentifier`, `PackageName`, and `Moniker`.
   - Setting `Moniker: bitchat-rustpy` enables:
     ```powershell
     winget install bitchat-rustpy
     ```
-  - Including `bitchat-rustpyl` in `Tags` also ensures that `winget search bitchat-rustpyl --source winget` resolves to `Java-Mx.BitChat` even if a trailing `l` is typed.
 
 ### 3.3 Privacy URL Policy
 - In accordance with legal/publisher review requirements, `PRIVACY_POLICY.md` remains in draft status and `PrivacyUrl` has intentionally been omitted from the `0.3.1` manifest until final sign-off.
@@ -132,7 +131,6 @@ Moniker: bitchat-rustpy
 Tags:
 - bitchat
 - bitchat-rustpy
-- bitchat-rustpyl
 - ble
 - bluetooth
 - chat
@@ -159,7 +157,7 @@ ManifestVersion: 1.28.0
 Validated on Windows 11 with WinGet `v1.29.380`:
 
 ```powershell
-PS D:\bitchat-python> winget validate --manifest D:\bitchat-python\manifests\j\Java-Mx\BitChat\0.3.1
+PS D:\bitchat-rustpy> winget validate --manifest D:\bitchat-rustpy\manifests\j\Java-Mx\BitChat\0.3.1
 Manifest validation succeeded.
 ```
 

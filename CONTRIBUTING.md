@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to **BitChat**! This guide covers setting up the hybrid Python + Rust development environment, running quality checks, and submitting pull requests.
 
-> **Security Vulnerabilities:** Do **not** report security vulnerabilities in public issues or pull requests. Please follow [`SECURITY.md`](SECURITY.md) and report privately via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-python/security/advisories/new).
+> **Security Vulnerabilities:** Do **not** report security vulnerabilities in public issues or pull requests. Please follow [`SECURITY.md`](SECURITY.md) and report privately via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new).
 
 ---
 
@@ -14,11 +14,11 @@ Thank you for your interest in contributing to **BitChat**! This guide covers se
 
 ### Clone & Synchronize
 
-Fork [https://github.com/Java-Mx/bitchat-python](https://github.com/Java-Mx/bitchat-python) on GitHub, then clone your fork (or the upstream repository):
+Fork [https://github.com/Java-Mx/bitchat-rustpy](https://github.com/Java-Mx/bitchat-rustpy) on GitHub, then clone your fork (or the upstream repository):
 
 ```bash
-git clone https://github.com/Java-Mx/bitchat-python.git
-cd bitchat-python
+git clone https://github.com/Java-Mx/bitchat-rustpy.git
+cd bitchat-rustpy
 uv sync --all-groups
 uv run --no-sync maturin develop --release
 ```

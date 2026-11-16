@@ -61,8 +61,8 @@ representative at an online or offline event.
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the project maintainers (`@Java-Mx`) through:
 
-- **Confidential / Sensitive Reports:** Submit a private report via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-python/security/advisories/new) (marked `[Code of Conduct]` in the title) so the report is visible only to repository maintainers.
-- **Public Moderation Issues:** Open an issue or contact the repository owner [`@Java-Mx`](https://github.com/Java-Mx) on GitHub at [https://github.com/Java-Mx/bitchat-python/issues](https://github.com/Java-Mx/bitchat-python/issues).
+- **Confidential / Sensitive Reports:** Submit a private report via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new) (marked `[Code of Conduct]` in the title) so the report is visible only to repository maintainers.
+- **Public Moderation Issues:** Open an issue or contact the repository owner [`@Java-Mx`](https://github.com/Java-Mx) on GitHub at [https://github.com/Java-Mx/bitchat-rustpy/issues](https://github.com/Java-Mx/bitchat-rustpy/issues).
 
 All complaints will be reviewed and investigated promptly and fairly.
 

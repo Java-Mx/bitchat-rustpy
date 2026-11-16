@@ -26,8 +26,8 @@
    ```
 2. Clone the repository and build the native Rust extension:
    ```bash
-   git clone https://github.com/Java-Mx/bitchat-python.git
-   cd bitchat-python
+   git clone https://github.com/Java-Mx/bitchat-rustpy.git
+   cd bitchat-rustpy
    uv sync --all-groups
    uv run --no-sync maturin develop --release
    ```

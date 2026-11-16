@@ -1,4 +1,4 @@
-//! Structured error encoding for deterministic mapping to BitChat Python exceptions.
+//! Structured error encoding for deterministic mapping to BitChat RustPy exceptions.
 
 use pyo3::exceptions::PyValueError;
 use pyo3::PyErr;

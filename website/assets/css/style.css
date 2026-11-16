@@ -14,7 +14,7 @@
   /* Borders & Dividers */
   --border-subtle: #1c2638;
   --border-muted: #27354d;
-  --border-active: #3b82f6;
+  --border-active: #10b981;
 
   /* Typography Colors */
   --text-main: #f1f5f9;
@@ -23,10 +23,10 @@
   --text-dim: #475569;
 
   /* Accent & Status Colors */
-  --accent: #00d2ff;
-  --accent-hover: #38bdf8;
-  --accent-dim: rgba(0, 210, 255, 0.12);
-  --accent-border: rgba(0, 210, 255, 0.35);
+  --accent: #10b981;
+  --accent-hover: #34d399;
+  --accent-dim: rgba(16, 185, 129, 0.12);
+  --accent-border: rgba(16, 185, 129, 0.35);
 
   --rust-color: #f97316;
   --rust-dim: rgba(249, 115, 22, 0.12);

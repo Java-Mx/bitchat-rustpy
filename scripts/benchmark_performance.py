@@ -1,4 +1,4 @@
-"""Comprehensive performance benchmarking for BitChat Python.
+"""Comprehensive performance benchmarking for BitChat RustPy.
 
 Measures:
 1. Application initialization and startup time

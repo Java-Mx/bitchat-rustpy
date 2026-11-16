@@ -6,7 +6,7 @@ labels: ["interoperability", "bug"]
 assignees: []
 ---
 
-> **Security Notice:** Do **NOT** report exploitable protocol or cryptographic vulnerabilities in public issues. Report security vulnerabilities privately via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-python/security/advisories/new) (`SECURITY.md`).
+> **Security Notice:** Do **NOT** report exploitable protocol or cryptographic vulnerabilities in public issues. Report security vulnerabilities privately via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new) (`SECURITY.md`).
 
 ## Environment & Versions
 - **BitChat version**: <!-- e.g., 0.3.1 (run `bitchat --version`) -->
@@ -34,7 +34,7 @@ assignees: []
 
 ### Python Client Logs
 ```
-<!-- Paste bitchat-python logs here -->
+<!-- Paste bitchat-rustpy logs here -->
 ```
 
 ### Rust / Reference Client Logs

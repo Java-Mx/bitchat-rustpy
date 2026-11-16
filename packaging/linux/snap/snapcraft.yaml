@@ -1,12 +1,12 @@
 name: bitchat
 base: core24
 version: '0.3.1'
-summary: Python terminal client for BitChat BLE and LAN mesh messaging
+summary: Encrypted peer-to-peer BLE and LAN mesh chat built with Python and Rust
 description: |
-  BitChat is a decentralized peer-to-peer terminal chat client operating
+  BitChat RustPy is a decentralized peer-to-peer terminal chat client operating
   over Bluetooth Low Energy (BLE) and Local Area Networks (LAN) with end-to-end
-  encryption using the Noise Protocol (X25519 / AES-GCM) and an interactive
-  terminal user interface built with Textual.
+  encryption using the Noise Protocol (X25519 / ChaCha20-Poly1305) and an
+  interactive terminal user interface built with Python and a native Rust core.
 
 grade: stable
 confinement: strict

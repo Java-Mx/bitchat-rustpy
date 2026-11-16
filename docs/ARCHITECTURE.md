@@ -1,6 +1,6 @@
 # Architecture
 
-BitChat Python follows a strict layered architecture to maintain separation of concerns and testability.
+BitChat RustPy follows a strict layered architecture to maintain separation of concerns and testability.
 
 ## Layered Architecture
 

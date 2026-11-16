@@ -4,7 +4,7 @@
 
 **Effective Date:** November 9, 2026  
 **Applicable Release:** BitChat `v0.3.1`  
-**Repository:** [https://github.com/Java-Mx/bitchat-python](https://github.com/Java-Mx/bitchat-python)
+**Repository:** [https://github.com/Java-Mx/bitchat-rustpy](https://github.com/Java-Mx/bitchat-rustpy)
 
 ---
 
@@ -117,5 +117,5 @@ This Privacy Policy is maintained in the BitChat source repository at [`PRIVACY_
 
 For questions or corrections regarding this policy or BitChat's data handling:
 
-- **Documentation & Privacy Issues:** Open an issue at [https://github.com/Java-Mx/bitchat-python/issues](https://github.com/Java-Mx/bitchat-python/issues)
-- **Security-Sensitive Reports:** Follow the private reporting instructions in [`SECURITY.md`](SECURITY.md) via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-python/security/advisories/new)
+- **Documentation & Privacy Issues:** Open an issue at [https://github.com/Java-Mx/bitchat-rustpy/issues](https://github.com/Java-Mx/bitchat-rustpy/issues)
+- **Security-Sensitive Reports:** Follow the private reporting instructions in [`SECURITY.md`](SECURITY.md) via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new)

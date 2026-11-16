@@ -148,16 +148,16 @@ If you prefer using your Python package manager directly instead of `bitchat --u
 
 ```bash
 # Standard pip
-pip uninstall bitchat-python
+pip uninstall bitchat-rustpy
 
 # Astral uv tool environment
-uv tool uninstall bitchat-python
+uv tool uninstall bitchat-rustpy
 
 # pipx isolated environment
-pipx uninstall bitchat-python
+pipx uninstall bitchat-rustpy
 ```
 
-If you installed `bitchat-python` across multiple Python versions on the same machine (`python3.10`, `python3.12`, `python3.14`, etc.), running `bitchat --uninstall` will clean up all discovered non-checkout Python installations in a single step.
+If you installed `bitchat-rustpy` across multiple Python versions on the same machine (`python3.10`, `python3.12`, `python3.14`, etc.), running `bitchat --uninstall` will clean up all discovered non-checkout Python installations in a single step.
 
 ---
 

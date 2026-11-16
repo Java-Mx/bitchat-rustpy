@@ -21,7 +21,7 @@ Security fixes are applied to the latest release on the `main` branch. Earlier p
 
 Please report suspected vulnerabilities privately using **GitHub Security Advisories**:
 
-- **Private Reporting URL:** [https://github.com/Java-Mx/bitchat-python/security/advisories/new](https://github.com/Java-Mx/bitchat-python/security/advisories/new)
+- **Private Reporting URL:** [https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new](https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new)
 
 ### 2.1 What to Include in Your Report
 

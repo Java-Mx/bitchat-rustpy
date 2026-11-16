@@ -3,15 +3,42 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BitChat — Encrypted Peer-to-Peer Mesh Chat for Terminals</title>
-  <meta name="description" content="Decentralized peer-to-peer mesh chat application operating over Bluetooth Low Energy and LAN. Mutual Noise XX encryption, zero central servers, zero telemetry, and native Rust core." />
+  <title>BitChat RustPy — Encrypted Peer-to-Peer Mesh Chat for Terminals</title>
+  <meta name="description" content="Decentralized, encrypted peer-to-peer messaging over Bluetooth LE and local networks, built with Python and accelerated by Rust. Mutual Noise XX encryption, zero central servers, zero telemetry." />
+  <link rel="canonical" href="https://java-mx.github.io/bitchat-rustpy/" />
   
-  <!-- Open Graph / Meta -->
+  <!-- Open Graph / Twitter Card -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="BitChat — Encrypted Peer-to-Peer Mesh Chat for Terminals" />
-  <meta property="og:description" content="Decentralized mesh chat over Bluetooth Low Energy and LAN. Noise XX encryption, zero servers, zero telemetry, Rust-accelerated core." />
-  <meta property="og:url" content="https://java-mx.github.io/bitchat-python/" />
-  <meta property="og:image" content="assets/img/screenshots/06_lan_active_chat.svg" />
+  <meta property="og:site_name" content="BitChat RustPy" />
+  <meta property="og:title" content="BitChat RustPy — Encrypted Peer-to-Peer Mesh Chat for Terminals" />
+  <meta property="og:description" content="Decentralized, encrypted peer-to-peer messaging over Bluetooth LE and local networks, built with Python and accelerated by Rust." />
+  <meta property="og:url" content="https://java-mx.github.io/bitchat-rustpy/" />
+  <meta property="og:image" content="https://java-mx.github.io/bitchat-rustpy/assets/img/screenshots/06_lan_active_chat.svg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="BitChat RustPy — Encrypted Peer-to-Peer Mesh Chat for Terminals" />
+  <meta name="twitter:description" content="Decentralized, encrypted peer-to-peer messaging over Bluetooth LE and local networks, built with Python and accelerated by Rust." />
+  <meta name="twitter:image" content="https://java-mx.github.io/bitchat-rustpy/assets/img/screenshots/06_lan_active_chat.svg" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "BitChat RustPy",
+    "operatingSystem": "Windows, Linux, macOS",
+    "applicationCategory": "CommunicationApplication",
+    "softwareVersion": "0.3.1",
+    "license": "https://opensource.org/licenses/MIT",
+    "url": "https://java-mx.github.io/bitchat-rustpy/",
+    "downloadUrl": "https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v0.3.1",
+    "codeRepository": "https://github.com/Java-Mx/bitchat-rustpy",
+    "author": {
+      "@type": "Organization",
+      "name": "Java-Mx",
+      "url": "https://github.com/Java-Mx"
+    },
+    "description": "Decentralized, encrypted peer-to-peer messaging over Bluetooth LE and local networks, built with Python and accelerated by Rust."
+  }
+  </script>
 
   <link rel="icon" type="image/svg+xml" href="assets/img/brand/Bitchat-Icon-Framed.svg" />
   <link rel="alternate icon" type="image/x-icon" href="assets/img/brand/bitchat.ico" />
@@ -22,9 +49,9 @@
   <!-- Site Header -->
   <header class="site-header">
     <div class="container nav-inner">
-      <a href="index.html" class="brand-link" aria-label="BitChat Home">
+      <a href="index.html" class="brand-link" aria-label="BitChat RustPy Home">
         <img src="assets/img/brand/bitchat-icon-32.svg" alt="" class="brand-icon" />
-        <span class="brand-title">BitChat</span>
+        <span class="brand-title">BitChat RustPy</span>
         <span class="brand-badge">v0.3.1</span>
       </a>
 
@@ -40,7 +67,7 @@
       </nav>
 
       <div class="nav-actions">
-        <a href="https://github.com/Java-Mx/bitchat-python" target="_blank" rel="noopener noreferrer" class="btn-github">
+        <a href="https://github.com/Java-Mx/bitchat-rustpy" target="_blank" rel="noopener noreferrer" class="btn-github">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
           </svg>
@@ -68,7 +95,7 @@
         <li><a href="privacy.html">Privacy Policy</a></li>
         <li><a href="terms.html">Terms of Use</a></li>
         <li>
-          <a href="https://github.com/Java-Mx/bitchat-python" target="_blank" rel="noopener noreferrer">View on GitHub &rarr;</a>
+          <a href="https://github.com/Java-Mx/bitchat-rustpy" target="_blank" rel="noopener noreferrer">View on GitHub &rarr;</a>
         </li>
       </ul>
     </div>
@@ -90,7 +117,7 @@
           </h1>
 
           <p class="hero-subhead">
-            BitChat Python connects peer nodes directly over Bluetooth Low Energy and Local Area Networks. Operates with mutual Noise XX encryption, zero central servers, zero accounts, and zero telemetry.
+            Decentralized, encrypted peer-to-peer messaging over Bluetooth LE and local networks, built with Python and accelerated by Rust. Operates with mutual Noise XX encryption, zero central servers, zero accounts, and zero telemetry.
           </p>
 
           <div class="hero-actions">
@@ -100,10 +127,10 @@
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
-              <span>Download BitChat</span>
+              <span>Download BitChat RustPy</span>
             </a>
 
-            <a href="https://github.com/Java-Mx/bitchat-python" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+            <a href="https://github.com/Java-Mx/bitchat-rustpy" target="_blank" rel="noopener noreferrer" class="btn-secondary">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
               </svg>
@@ -114,7 +141,7 @@
           <div class="cli-install-box">
             <div class="cli-label">
               <span>Quick Install on Windows (WinGet)</span>
-              <button class="btn-copy" data-copy="winget install Java-Mx.BitChat" aria-label="Copy WinGet command">
+              <button class="btn-copy" data-copy="winget install bitchat-rustpy" aria-label="Copy WinGet command">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -122,7 +149,7 @@
                 <span>Copy</span>
               </button>
             </div>
-            <code class="cli-cmd">winget install Java-Mx.BitChat</code>
+            <code class="cli-cmd">winget install bitchat-rustpy</code>
           </div>
         </div>
 
@@ -511,14 +538,14 @@
               </tr>
               <tr>
                 <td>
-                  <span class="pkg-title">Linux Sandboxed</span>
-                  <span class="pkg-format">Flatpak Bundle</span>
+                  <span class="pkg-title">Python 3.12+ (Windows &amp; Linux)</span>
+                  <span class="pkg-format">Precompiled ABI3 Wheel</span>
                 </td>
-                <td>Flatpak (<code>.flatpak</code>)</td>
-                <td>x86_64</td>
+                <td>Python Wheel (<code>.whl</code>)</td>
+                <td>win_amd64 / linux_x86_64</td>
                 <td>0.3.1</td>
                 <td><span class="feature-badge badge-verified">Official Release Asset</span></td>
-                <td><a href="downloads.html#linux" class="btn-table-dl">Download &rarr;</a></td>
+                <td><a href="downloads.html#wheels" class="btn-table-dl">Download &rarr;</a></td>
               </tr>
               <tr>
                 <td>
@@ -538,15 +565,15 @@
     </section>
 
     <!-- Bottom CTA -->
-    <section class="section" style="border-bottom: none; background: radial-gradient(circle at 50% 100%, rgba(0, 210, 255, 0.05) 0%, transparent 70%);">
+    <section class="section" style="border-bottom: none; background: radial-gradient(circle at 50% 100%, rgba(16, 185, 129, 0.06) 0%, transparent 70%);">
       <div class="container" style="text-align: center; max-width: 640px; margin: 0 auto;">
         <h2 class="section-title" style="font-size: 2rem; margin-bottom: 1rem;">Ready to communicate without intermediaries?</h2>
         <p style="margin-bottom: 2rem; font-size: 1.05rem;">
-          Download BitChat v0.3.1 or inspect the open-source code on GitHub.
+          Download BitChat RustPy v0.3.1 or inspect the open-source code on GitHub.
         </p>
         <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
           <a href="downloads.html" class="btn-primary" style="padding: 0.85rem 1.75rem;">
-            <span>Get BitChat 0.3.1</span>
+            <span>Get BitChat RustPy 0.3.1</span>
           </a>
           <a href="docs.html" class="btn-secondary" style="padding: 0.85rem 1.5rem;">
             <span>Read Documentation</span>
@@ -563,10 +590,10 @@
         <div class="footer-brand-col">
           <div style="display: flex; align-items: center; gap: 0.6rem;">
             <img src="assets/img/brand/bitchat-icon-32.svg" alt="" width="22" height="22" />
-            <span style="font-weight: 700; color: #ffffff;">BitChat Python</span>
+            <span style="font-weight: 700; color: #ffffff;">BitChat RustPy</span>
           </div>
           <p>
-            An independent, open-source encrypted peer-to-peer mesh chat application. Published under the MIT License.
+            Decentralized, encrypted peer-to-peer messaging over Bluetooth LE and local networks, built with Python and accelerated by Rust. Published under the MIT License.
           </p>
         </div>
 
@@ -577,7 +604,7 @@
             <li><a href="downloads.html#linux">Linux Packages (.deb, AppImage)</a></li>
             <li><a href="downloads.html#wheels">Python Wheels</a></li>
             <li><a href="downloads.html#source">Source Tarball</a></li>
-            <li><a href="https://github.com/Java-Mx/bitchat-python/releases" target="_blank" rel="noopener noreferrer">All GitHub Releases</a></li>
+            <li><a href="https://github.com/Java-Mx/bitchat-rustpy/releases" target="_blank" rel="noopener noreferrer">All GitHub Releases</a></li>
           </ul>
         </div>
 
@@ -599,7 +626,7 @@
             <li><a href="security.html#cryptography">Cryptographic Invariants</a></li>
             <li><a href="privacy.html">Privacy Policy (Draft)</a></li>
             <li><a href="terms.html">Terms of Use (Draft)</a></li>
-            <li><a href="https://github.com/Java-Mx/bitchat-python/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a></li>
+            <li><a href="https://github.com/Java-Mx/bitchat-rustpy/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a></li>
           </ul>
         </div>
       </div>
@@ -607,7 +634,7 @@
       <div class="footer-bottom">
         <div class="footer-status-indicator">
           <span class="status-dot"></span>
-          <span>BitChat v0.3.1 &bull; Zero Central Servers &bull; Zero Telemetry</span>
+          <span>BitChat RustPy v0.3.1 &bull; Zero Central Servers &bull; Zero Telemetry</span>
         </div>
         <div>
           &copy; 2026 Java-Mx &amp; BitChat Contributors. Open Source Software under MIT License.

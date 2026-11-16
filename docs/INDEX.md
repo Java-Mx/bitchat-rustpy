@@ -48,7 +48,7 @@ Welcome to the central documentation index for **BitChat** (`v0.3.1`), a peer-to
 | [`docs/protocol/MESSAGE_TYPES.md`](protocol/MESSAGE_TYPES.md) | Complete specification of the protocol `MessageType` codes (`0x01`–`0x25`) and their inner payload formats. |
 | [`docs/protocol/FRAGMENTATION.md`](protocol/FRAGMENTATION.md) | MTU-aware packet fragmentation (`> 500` bytes), 13-byte fragment headers, inter-fragment pacing, and bounded reassembly (`NativeFragmentReassembler`). |
 | [`docs/protocol/ROUTING.md`](protocol/ROUTING.md) | Multi-hop flood routing, TTL bounds, SHA-256 deduplication cache (`NativePacketDeduplicator`), peer rate limiting (`NativePeerRateLimiter`), and Store-and-Forward buffering (`StoreAndForwardQueue`). |
-| [`docs/protocol/COMPATIBILITY.md`](protocol/COMPATIBILITY.md) | Interoperability status between BitChat Python/Rust (`v0.3.1`) and external BitChat reference implementations, including post-handshake peer ID binding differences. |
+| [`docs/protocol/COMPATIBILITY.md`](protocol/COMPATIBILITY.md) | Interoperability status between BitChat RustPy/Rust (`v0.3.1`) and external BitChat reference implementations, including post-handshake peer ID binding differences. |
 
 ---
 

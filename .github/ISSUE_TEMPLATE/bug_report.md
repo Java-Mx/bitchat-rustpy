@@ -6,7 +6,7 @@ labels: ["bug"]
 assignees: []
 ---
 
-> **Security Notice:** Do **NOT** report security vulnerabilities in public GitHub issues. Please report suspected security vulnerabilities privately via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-python/security/advisories/new) as described in [`SECURITY.md`](../../SECURITY.md). Also **never** attach your `~/.bitchat/identity.json` file.
+> **Security Notice:** Do **NOT** report security vulnerabilities in public GitHub issues. Please report suspected security vulnerabilities privately via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new) as described in [`SECURITY.md`](../../SECURITY.md). Also **never** attach your `~/.bitchat/identity.json` file.
 
 ## Description
 <!-- A clear and concise description of what the bug is. -->

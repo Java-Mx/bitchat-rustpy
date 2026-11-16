@@ -21,9 +21,9 @@
     </ul>
   </description>
   <launchable type="desktop-id">io.github.java_mx.bitchat.desktop</launchable>
-  <url type="homepage">https://github.com/Java-Mx/bitchat-python</url>
-  <url type="bugtracker">https://github.com/Java-Mx/bitchat-python/issues</url>
-  <url type="vcs-browser">https://github.com/Java-Mx/bitchat-python</url>
+  <url type="homepage">https://github.com/Java-Mx/bitchat-rustpy</url>
+  <url type="bugtracker">https://github.com/Java-Mx/bitchat-rustpy/issues</url>
+  <url type="vcs-browser">https://github.com/Java-Mx/bitchat-rustpy</url>
   <provides>
     <binary>bitchat</binary>
   </provides>

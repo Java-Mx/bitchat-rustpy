@@ -21,7 +21,7 @@
 
 ## Compatibility Impact
 
-<!-- Explain compatibility with previous bitchat-python versions and other BitChat clients (e.g., Rust reference implementation). -->
+<!-- Explain compatibility with previous bitchat-rustpy versions and other BitChat clients (e.g., Rust reference implementation). -->
 
 ## Documentation
 

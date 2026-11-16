@@ -39,7 +39,7 @@
 
 ## 2. Download & Checksum Verification
 
-Official Windows installers are distributed through [GitHub Releases](https://github.com/Java-Mx/bitchat-python/releases) and the official [Download Page](../download/index.html) ([`docs/DOWNLOAD.md`](../DOWNLOAD.md)).
+Official Windows installers are distributed through [GitHub Releases](https://github.com/Java-Mx/bitchat-rustpy/releases) and the official [Download Page](../download/index.html) ([`docs/DOWNLOAD.md`](../DOWNLOAD.md)).
 
 - **Package Identifier:** `Java-Mx.BitChat`
 - **Publisher:** `Java-Mx`

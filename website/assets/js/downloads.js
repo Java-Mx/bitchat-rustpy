@@ -38,7 +38,7 @@
           </svg>
           Detected Windows (x64)
         `;
-        osTitle.textContent = 'BitChat for Windows';
+        osTitle.textContent = 'BitChat RustPy for Windows';
       } else if (os === 'linux') {
         osBadge.innerHTML = `
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -48,7 +48,7 @@
           </svg>
           Detected Linux (x86_64)
         `;
-        osTitle.textContent = 'BitChat for Linux';
+        osTitle.textContent = 'BitChat RustPy for Linux';
       } else if (os === 'macos') {
         osBadge.innerHTML = `
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -56,7 +56,7 @@
           </svg>
           Detected macOS
         `;
-        osTitle.textContent = 'BitChat for macOS (Source / uv)';
+        osTitle.textContent = 'BitChat RustPy for macOS (Source / uv)';
       }
     }
 

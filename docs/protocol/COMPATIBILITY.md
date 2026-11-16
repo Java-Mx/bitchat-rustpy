@@ -1,6 +1,6 @@
 # BitChat Protocol Interoperability & Compatibility (`v0.3.1`)
 
-This document specifies the wire-level compatibility between BitChat (`bitchat-python` `v0.3.1`, including its embedded `rust/bitchat-core` native extension) and external BitChat v1 reference implementations, including intentional security hardening differences.
+This document specifies the wire-level compatibility between BitChat (`bitchat-rustpy` `v0.3.1`, including its embedded `rust/bitchat-core` native extension) and external BitChat v1 reference implementations, including intentional security hardening differences.
 
 ---
 
@@ -30,7 +30,7 @@ Within this repository, `rust/bitchat-core` (`bitchat._bitchat_core`) and the pu
 
 ## Defensive Parsing & Reference Parity
 
-| Property | Rust Reference (`bitchat-tui`) | Python Implementation (`bitchat-python`) | Rationale |
+| Property | Rust Reference (`bitchat-tui`) | Python Implementation (`bitchat-rustpy`) | Rationale |
 |---|---|---|---|
 | **Padding Removal** | Permissive: strips `data[-1]` bytes without verifying against expected packet length | Strict: verifies `len(data) - expected_unpadded_size == data[-1]` | Rejects corrupted, truncated, or ambiguous trailing bytes |
 | **Post-Handshake Peer ID Binding** | Permissive: generates random 8-byte peer ID independent of static Noise key | Strict: verifies `peer_id == SHA-256(remote_x25519_public)[:8]` after Noise XX handshake | Prevents an authenticated Noise peer from claiming an arbitrary routing `peer_id` |

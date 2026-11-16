@@ -1,6 +1,6 @@
 # BitChat Release Engineering Process (`v0.3.1`)
 
-This document describes the official release process for BitChat (`https://github.com/Java-Mx/bitchat-python`), reflecting the actual build scripts (`packaging/windows/build.py`, `packaging/linux/build.py`) and GitHub Actions workflows (`.github/workflows/ci.yml`, `.github/workflows/build.yml`, `.github/workflows/security.yml`, and `.github/workflows/release.yml`).
+This document describes the official release process for BitChat (`https://github.com/Java-Mx/bitchat-rustpy`), reflecting the actual build scripts (`packaging/windows/build.py`, `packaging/linux/build.py`) and GitHub Actions workflows (`.github/workflows/ci.yml`, `.github/workflows/build.yml`, `.github/workflows/security.yml`, and `.github/workflows/release.yml`).
 
 ---
 
@@ -124,6 +124,6 @@ Every official release publishes the following 13 assets:
 
 After `.github/workflows/release.yml` completes:
 
-1. Verify that all release assets are attached to `https://github.com/Java-Mx/bitchat-python/releases/tag/v<version>` and that every `.sha256` file matches its corresponding binary asset.
+1. Verify that all release assets are attached to `https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v<version>` and that every `.sha256` file matches its corresponding binary asset.
 2. Update `docs/DOWNLOAD.md` and `docs/download/index.html` if the release workflow generated a new Windows `.exe` SHA-256 hash or byte size.
 3. Verify that the GitHub Release body contains the full structured release notes from `CHANGELOG.md`.

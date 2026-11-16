@@ -162,7 +162,7 @@ def test_legal_and_security_policy_invariants() -> None:
 
     # Security policy requirements
     assert (
-        "https://github.com/Java-Mx/bitchat-python/security/advisories/new"
+        "https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new"
         in security_md
     )
     assert "independent third-party" in security_md

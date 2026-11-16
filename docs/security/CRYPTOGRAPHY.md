@@ -86,7 +86,7 @@ Channel Symmetric Key (32 bytes, for AES-256-GCM)
 ```
 
 ### 2.8 Local Identity & Configuration Storage (`~/.bitchat/`)
-In `bitchat-python` `v0.3.1`, persistent cryptographic identity keys are stored in `~/.bitchat/identity.json` (`%USERPROFILE%\.bitchat\identity.json` on Windows):
+In `bitchat-rustpy` `v0.3.1`, persistent cryptographic identity keys are stored in `~/.bitchat/identity.json` (`%USERPROFILE%\.bitchat\identity.json` on Windows):
 - `identity.json` stores `x25519_private`, `ed25519_private`, `fingerprint`, and `peer_id` as hexadecimal strings, protected by POSIX `0600` permissions on Linux/macOS and a current-user-only DACL (`SetNamedSecurityInfoW`) on Windows, guarded by an advisory file lock (`identity.json.lock`).
 - `config.json` stores non-sensitive settings and the Trust-On-First-Use (TOFU) `contacts` map (`peer_id` → 64-char `fingerprint`). Plaintext passwords are never stored in `config.json`.
 

@@ -2,38 +2,38 @@
 
 <img src="docs/download/assets/bitchat-wordmark-dark.png" alt="BitChat" width="280" />
 
-# CLI BitChat Python
+# BitChat RustPy
 
-**Encrypted peer-to-peer mesh chat over Bluetooth Low Energy and LAN**
+**Decentralized, encrypted peer-to-peer mesh messaging over Bluetooth LE and local networks — built with Python and accelerated by Rust**
 
 *Terminal-native · No servers · No accounts · No internet required*
 
-[![Security](https://github.com/Java-Mx/bitchat-python/actions/workflows/security.yml/badge.svg)](https://github.com/Java-Mx/bitchat-python/actions/workflows/security.yml)
+[![Security](https://github.com/Java-Mx/bitchat-rustpy/actions/workflows/security.yml/badge.svg)](https://github.com/Java-Mx/bitchat-rustpy/actions/workflows/security.yml)
 [![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Ruff](https://img.shields.io/badge/linter-ruff-orange)](https://docs.astral.sh/ruff/)
 [![Pyright](https://img.shields.io/badge/type%20check-pyright-blue)](https://github.com/microsoft/pyright)
-[![Dependabot](https://img.shields.io/badge/dependabot-enabled-blue?logo=dependabot)](https://github.com/Java-Mx/bitchat-python/blob/main/.github/dependabot.yml)
-[![Last Commit](https://img.shields.io/github/last-commit/Java-Mx/bitchat-python/main)](https://github.com/Java-Mx/bitchat-python/commits/main)
-[![Repo Size](https://img.shields.io/github/repo-size/Java-Mx/bitchat-python)](https://github.com/Java-Mx/bitchat-python)
-[![Issues](https://img.shields.io/github/issues/Java-Mx/bitchat-python)](https://github.com/Java-Mx/bitchat-python/issues)
-[![Contributors](https://img.shields.io/github/contributors/Java-Mx/bitchat-python)](https://github.com/Java-Mx/bitchat-python/graphs/contributors)
-[![Stars](https://img.shields.io/github/stars/Java-Mx/bitchat-python?style=flat)](https://github.com/Java-Mx/bitchat-python/stargazers)
-[![Forks](https://img.shields.io/github/forks/Java-Mx/bitchat-python?style=flat)](https://github.com/Java-Mx/bitchat-python/network/members)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-blue?logo=dependabot)](https://github.com/Java-Mx/bitchat-rustpy/blob/main/.github/dependabot.yml)
+[![Last Commit](https://img.shields.io/github/last-commit/Java-Mx/bitchat-rustpy/main)](https://github.com/Java-Mx/bitchat-rustpy/commits/main)
+[![Repo Size](https://img.shields.io/github/repo-size/Java-Mx/bitchat-rustpy)](https://github.com/Java-Mx/bitchat-rustpy)
+[![Issues](https://img.shields.io/github/issues/Java-Mx/bitchat-rustpy)](https://github.com/Java-Mx/bitchat-rustpy/issues)
+[![Contributors](https://img.shields.io/github/contributors/Java-Mx/bitchat-rustpy)](https://github.com/Java-Mx/bitchat-rustpy/graphs/contributors)
+[![Stars](https://img.shields.io/github/stars/Java-Mx/bitchat-rustpy?style=flat)](https://github.com/Java-Mx/bitchat-rustpy/stargazers)
+[![Forks](https://img.shields.io/github/forks/Java-Mx/bitchat-rustpy?style=flat)](https://github.com/Java-Mx/bitchat-rustpy/network/members)
 
 <br /><br />
 
-<a href="https://github.com/Java-Mx/bitchat-python/raw/main/docs/assets/videos/bitchat-demo.mp4" title="Click to stream or download full-resolution MP4 video">
-  <img src="docs/assets/videos/bitchat-demo.gif" alt="BitChat Python Terminal Demonstration" width="840" />
+<a href="https://github.com/Java-Mx/bitchat-rustpy/raw/main/docs/assets/videos/bitchat-demo.mp4" title="Click to stream or download full-resolution MP4 video">
+  <img src="docs/assets/videos/bitchat-demo.gif" alt="BitChat RustPy Terminal Demonstration" width="840" />
 </a>
 
 <p align="center">
-  <sub><b>Live Application Demonstration</b> &bull; Peer-to-peer encrypted terminal mesh chat &bull; <a href="https://github.com/Java-Mx/bitchat-python/raw/main/docs/assets/videos/bitchat-demo.mp4"><b>Watch / Download Full HD 1440p MP4</b></a></sub>
+  <sub><b>Live Application Demonstration</b> &bull; Peer-to-peer encrypted terminal mesh chat &bull; <a href="https://github.com/Java-Mx/bitchat-rustpy/raw/main/docs/assets/videos/bitchat-demo.mp4"><b>Watch / Download Full HD 1440p MP4</b></a> &bull; <a href="https://java-mx.github.io/bitchat-rustpy/"><b>Official Website</b></a></sub>
 </p>
 
 </div>
 
-BitChat Python is an asynchronous terminal client implementing the [BitChat](https://github.com/vaibhav-mattoo/bitchat-tui) protocol. Nodes discover each other over Bluetooth Low Energy or local Wi-Fi, negotiate authenticated Noise XX sessions, and exchange end-to-end encrypted messages across a self-forming multi-hop mesh — no infrastructure required.
+**BitChat RustPy** is an asynchronous terminal client implementing the [BitChat](https://github.com/vaibhav-mattoo/bitchat-tui) protocol, built with Python and accelerated by a compiled native Rust core (`_bitchat_core`). Nodes discover each other over Bluetooth Low Energy or local Wi-Fi, negotiate authenticated Noise XX sessions, and exchange end-to-end encrypted messages across a self-forming multi-hop mesh — no infrastructure required.
 
 ---
 
@@ -67,10 +67,12 @@ BitChat Python is an asynchronous terminal client implementing the [BitChat](htt
 
 ### Windows (Fastest)
 
-Download and run the standalone installer from [GitHub Releases](https://github.com/Java-Mx/bitchat-python/releases) (or view the [Official Windows Download Guide](docs/DOWNLOAD.md)):
+Download and run the standalone installer from [GitHub Releases](https://github.com/Java-Mx/bitchat-rustpy/releases) (or view the [Official Windows Download Guide](docs/DOWNLOAD.md)):
 ```powershell
-# Or via WinGet once published upstream:
-winget install Java-Mx.BitChat
+# Install via WinGet:
+winget install bitchat-rustpy
+# Or by exact package identifier:
+winget install --id Java-Mx.BitChat --exact
 
 # Launch immediately:
 bitchat
@@ -79,8 +81,8 @@ bitchat
 ### Linux & macOS (Python / Source)
 
 ```bash
-git clone https://github.com/Java-Mx/bitchat-python.git
-cd bitchat-python
+git clone https://github.com/Java-Mx/bitchat-rustpy.git
+cd bitchat-rustpy
 uv sync
 uv run bitchat
 ```
@@ -103,14 +105,14 @@ BitChat provides dedicated distribution channels tailored for each platform:
 #### WinGet
 
 > [!NOTE]
-> **Status:** WinGet submission: pending Microsoft review ([microsoft/winget-pkgs#443445](https://github.com/microsoft/winget-pkgs/pull/443445)).
-> Official WinGet manifests are prepared and validated in the repository at [`manifests/j/Java-Mx/BitChat/0.3.1/`](manifests/j/Java-Mx/BitChat/0.3.1/).
-> The public command `winget install Java-Mx.BitChat` becomes available once the manifest pull request is merged into Microsoft's community repository ([microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs)).
-> Until upstream review is complete, use the **GitHub Release Installer** below or install directly from the local repository manifest.
+> **Status:** Published in Microsoft's official WinGet repository (`Java-Mx.BitChat`, initial release merged in [microsoft/winget-pkgs#443445](https://github.com/microsoft/winget-pkgs/pull/443445); `v0.3.1` update with moniker `bitchat-rustpy` submitted in [microsoft/winget-pkgs#481727](https://github.com/microsoft/winget-pkgs/pull/481727)).
+> Official WinGet manifests are maintained and validated in the repository at [`manifests/j/Java-Mx/BitChat/0.3.1/`](manifests/j/Java-Mx/BitChat/0.3.1/).
 
-Once accepted into Microsoft's official WinGet repository:
+Install via Microsoft WinGet:
 ```powershell
-winget install Java-Mx.BitChat
+winget install bitchat-rustpy
+# Or by exact package identifier:
+winget install --id Java-Mx.BitChat --exact
 ```
 
 To test or install directly from this repository's local manifest:
@@ -120,19 +122,19 @@ winget install --manifest manifests/j/Java-Mx/BitChat/0.3.1/
 
 **Upgrade:**
 ```powershell
-winget upgrade Java-Mx.BitChat
+winget upgrade --id Java-Mx.BitChat --exact
 ```
 
 **Uninstall:**
 ```powershell
-winget uninstall Java-Mx.BitChat
+winget uninstall --id Java-Mx.BitChat --exact
 ```
 
 #### GitHub Release Installer
 
 The self-contained Windows executable installer (`BitChat-<version>-windows-x64.exe`) bundles the Python runtime, BitChat package, Bleak WinRT Bluetooth stack, and native cryptographic libraries into a single setup program. No Python, Git, or Administrator privileges are required.
 
-1. Download `BitChat-<version>-windows-x64.exe` and `BitChat-<version>-windows-x64.exe.sha256` from [GitHub Releases](https://github.com/Java-Mx/bitchat-python/releases) (see [`docs/DOWNLOAD.md`](docs/DOWNLOAD.md) and [`docs/platform/WINDOWS.md`](docs/platform/WINDOWS.md)).
+1. Download `BitChat-<version>-windows-x64.exe` and `BitChat-<version>-windows-x64.exe.sha256` from [GitHub Releases](https://github.com/Java-Mx/bitchat-rustpy/releases) (see [`docs/DOWNLOAD.md`](docs/DOWNLOAD.md) and [`docs/platform/WINDOWS.md`](docs/platform/WINDOWS.md)).
 2. Verify the SHA-256 checksum in PowerShell:
    ```powershell
    Get-FileHash .\BitChat-0.3.1-windows-x64.exe -Algorithm SHA256
@@ -156,8 +158,8 @@ If you prefer developing on Windows or running from source:
 
 ```powershell
 # Clone the repository
-git clone https://github.com/Java-Mx/bitchat-python.git
-cd bitchat-python
+git clone https://github.com/Java-Mx/bitchat-rustpy.git
+cd bitchat-rustpy
 
 # Using uv (recommended)
 uv sync
@@ -217,7 +219,7 @@ flatpak uninstall io.github.java_mx.bitchat
 
 The primary native package for Debian, Ubuntu, Linux Mint, Pop!_OS, and derivatives. Installs the self-contained executable to `/usr/lib/bitchat`, integrates the `/usr/bin/bitchat` launcher, and adds desktop application shortcuts.
 
-1. Download `bitchat_<version>_amd64.deb` and its SHA-256 checksum from [GitHub Releases](https://github.com/Java-Mx/bitchat-python/releases).
+1. Download `bitchat_<version>_amd64.deb` and its SHA-256 checksum from [GitHub Releases](https://github.com/Java-Mx/bitchat-rustpy/releases).
 2. Install via `apt` (automatically handles system permissions):
    ```bash
    sudo apt install ./bitchat_<version>_amd64.deb
@@ -241,7 +243,7 @@ The primary native package for Debian, Ubuntu, Linux Mint, Pop!_OS, and derivati
 
 A standalone universal executable that runs on any modern 64-bit Linux distribution without installation or root privileges.
 
-1. Download `BitChat-<version>-x86_64.AppImage` from [GitHub Releases](https://github.com/Java-Mx/bitchat-python/releases).
+1. Download `BitChat-<version>-x86_64.AppImage` from [GitHub Releases](https://github.com/Java-Mx/bitchat-rustpy/releases).
 2. Grant execution permissions:
    ```bash
    chmod +x BitChat-<version>-x86_64.AppImage
@@ -299,8 +301,8 @@ sudo pacman -S python git bluez bluez-utils
 #### 2. Clone and install with `uv` (recommended)
 
 ```bash
-git clone https://github.com/Java-Mx/bitchat-python.git
-cd bitchat-python
+git clone https://github.com/Java-Mx/bitchat-rustpy.git
+cd bitchat-rustpy
 
 # Install dependencies and run
 uv sync
@@ -404,8 +406,8 @@ python3 --version
 ### 2. Clone the repository
 
 ```bash
-git clone https://github.com/Java-Mx/bitchat-python.git
-cd bitchat-python
+git clone https://github.com/Java-Mx/bitchat-rustpy.git
+cd bitchat-rustpy
 ```
 
 ### 3a. Install with `uv` (recommended)
@@ -472,7 +474,7 @@ bitchat --cli
 ### 2. Package not found (`Java-Mx.BitChat`)
 - **What it means:** The package manifest has been submitted upstream ([microsoft/winget-pkgs#443445](https://github.com/microsoft/winget-pkgs/pull/443445)) and is pending Microsoft review/merge into the public repository.
 - **Solution:**
-  - Fallback 1: Download `BitChat-<version>-windows-x64.exe` from [GitHub Releases](https://github.com/Java-Mx/bitchat-python/releases) and run setup.
+  - Fallback 1: Download `BitChat-<version>-windows-x64.exe` from [GitHub Releases](https://github.com/Java-Mx/bitchat-rustpy/releases) and run setup.
   - Fallback 2: Install directly from the local repository manifest:
     ```powershell
     winget install --manifest manifests/j/Java-Mx/BitChat/0.3.1/

@@ -72,7 +72,7 @@ flowchart TD
 ## 5. Duplicate Detection and Loop Prevention
 
 To prevent infinite routing loops and broadcast storms:
-- **Deterministic SHA-256 `[:16]` Cache (`v0.3.1` Implementation):** While the early external `bitchat-tui` prototype used a probabilistic Bloom filter, `bitchat-python` `v0.3.1` implements a deterministic bounded LRU + TTL deduplication cache (`NativePacketDeduplicator` in `rust/bitchat-core/src/mesh.rs` and `PacketDeduplicator` in `src/bitchat/mesh/dedup.py`). It computes a TTL-invariant 16-byte SHA-256 digest over `(sender_id, timestamp, message_type, recipient_id, payload)` bounded to `1,000` entries and a `300.0`-second TTL.
+- **Deterministic SHA-256 `[:16]` Cache (`v0.3.1` Implementation):** While the early external `bitchat-tui` prototype used a probabilistic Bloom filter, `bitchat-rustpy` `v0.3.1` implements a deterministic bounded LRU + TTL deduplication cache (`NativePacketDeduplicator` in `rust/bitchat-core/src/mesh.rs` and `PacketDeduplicator` in `src/bitchat/mesh/dedup.py`). It computes a TTL-invariant 16-byte SHA-256 digest over `(sender_id, timestamp, message_type, recipient_id, payload)` bounded to `1,000` entries and a `300.0`-second TTL.
 - **Per-Peer Rate Limiting:** `NativePeerRateLimiter` enforces a sliding-window cap of `50` packets/second per peer to prevent flood amplification.
 - **Drop Action:** If a packet digest is already present in the deduplicator or exceeds the peer rate limit, the packet is silently dropped without retransmission.
 - **Reassembly Check:** Deduplication is applied both at the wire packet level and after fragmented messages are reassembled.

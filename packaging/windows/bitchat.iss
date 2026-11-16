@@ -1,6 +1,6 @@
 ; =============================================================================
 ; BitChat Windows Installer 2.0 — Inno Setup 6 Script
-; Repository: https://github.com/Java-Mx/bitchat-python
+; Repository: https://github.com/Java-Mx/bitchat-rustpy
 ; Package Identifier: Java-Mx.BitChat
 ; =============================================================================
 
@@ -14,9 +14,9 @@
 
 #define MyAppName "BitChat"
 #define MyAppPublisher "Java-Mx"
-#define MyAppURL "https://github.com/Java-Mx/bitchat-python"
-#define MyTermsURL "https://github.com/Java-Mx/bitchat-python/blob/main/TERMS_OF_USE.md"
-#define MyPrivacyURL "https://github.com/Java-Mx/bitchat-python/blob/main/PRIVACY_POLICY.md"
+#define MyAppURL "https://github.com/Java-Mx/bitchat-rustpy"
+#define MyTermsURL "https://github.com/Java-Mx/bitchat-rustpy/blob/main/TERMS_OF_USE.md"
+#define MyPrivacyURL "https://github.com/Java-Mx/bitchat-rustpy/blob/main/PRIVACY_POLICY.md"
 #define MyAppExeName "bitchat.exe"
 #define MyAppId "{{B17CHA70-B1EC-4E87-99B7-4DA78D0B7001}"
 #define MyAppRegKey "Software\Java-Mx\BitChat"

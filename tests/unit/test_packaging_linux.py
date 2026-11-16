@@ -217,7 +217,7 @@ def test_deb_package_metadata_fields(tmp_path: Path) -> None:
     assert f"Version: {version}" in control_text
     assert "Architecture: amd64" in control_text
     assert "Maintainer: BitChat Contributors" in control_text
-    assert "Homepage: https://github.com/Java-Mx/bitchat-python" in control_text
+    assert "Homepage: https://github.com/Java-Mx/bitchat-rustpy" in control_text
     assert "Section: net" in control_text
 
 

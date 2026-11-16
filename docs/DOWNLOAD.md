@@ -17,8 +17,8 @@
 | **Release Date** | `2026-11-09` |
 | **SHA-256 Checksum** | `2A2D68F5B7B975620AF7197030A6DD068C8A0D096AEEECFC69F5DBB3FA84A75A` |
 | **Digital Signature Status** | NotSigned — No commercial code-signing certificate configured yet. Do not treat as a Microsoft-verified publisher until a real certificate signature is verified. Always verify the SHA-256 checksum below. |
-| **Official Download URL** | [https://github.com/Java-Mx/bitchat-python/releases/download/v0.3.1/BitChat-0.3.1-windows-x64.exe](https://github.com/Java-Mx/bitchat-python/releases/download/v0.3.1/BitChat-0.3.1-windows-x64.exe) |
-| **All Releases** | [GitHub Releases](https://github.com/Java-Mx/bitchat-python/releases) |
+| **Official Download URL** | [https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.1/BitChat-0.3.1-windows-x64.exe](https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.1/BitChat-0.3.1-windows-x64.exe) |
+| **All Releases** | [GitHub Releases](https://github.com/Java-Mx/bitchat-rustpy/releases) |
 
 ---
 
@@ -46,17 +46,16 @@ Before downloading or installing BitChat, please review:
 
 ## All Official `v0.3.1` Release Assets & SHA-256 Checksums
 
-All 13 release artifacts are available on the [Official GitHub Release (`v0.3.1`)](https://github.com/Java-Mx/bitchat-python/releases/tag/v0.3.1):
+All official release artifacts are available on the [Official GitHub Release (`v0.3.1`)](https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v0.3.1):
 
 | Platform / Format | Asset Filename | SHA-256 Checksum |
 |---|---|---|
 | **Windows x64 Installer** | `BitChat-0.3.1-windows-x64.exe` | `2A2D68F5B7B975620AF7197030A6DD068C8A0D096AEEECFC69F5DBB3FA84A75A` |
-| **Linux Debian/Ubuntu (`amd64`)** | `bitchat_0.3.1_amd64.deb` | `78102FE305DFC09FFCC2B125C2E3F415800673BEFE5BA8712224B96AFD7C466F` |
-| **Linux AppImage (`x86_64`)** | `BitChat-0.3.1-x86_64.AppImage` | `3DE90657D6383DC11A753CA008B9162BC74C46AD8F5158F4B956F96393773152` |
-| **Linux Flatpak (`x86_64`)** | `BitChat-0.3.1-x86_64.flatpak` | `DBCFDBB8456A5D68BA87003A328B1D53C00AA0B400B104DB0D353A31C114FA95` |
-| **Windows Wheel (`cp312`)** | `bitchat_python-0.3.1-cp312-cp312-win_amd64.whl` | `303C0AE1D97D0C5594A222EC74FC142158DF9D45BBF37FCBC00AE3766DC3CA08` |
-| **Linux Wheel (`cp312`)** | `bitchat_python-0.3.1-cp312-cp312-linux_x86_64.whl` | `BB13B8C8469ED15EC0AA1E176D84F3EDB37010903DE3C9A3B76B6F0C08B230E3` |
-| **Source Archive (`sdist`)** | `bitchat_python-0.3.1.tar.gz` | `8AD4DC5DCDA52E2A027E2EB6D12A13E7FAEF5F350B972F94093EB4A7B80684E9` |
+| **Linux Debian/Ubuntu (`amd64`)** | `bitchat_0.3.1_amd64.deb` | `42D60D72F6DD7FA78D2A2056388A716054B00A25EDDE451E9A848F5E6E0358F8` |
+| **Linux AppImage (`x86_64`)** | `BitChat-0.3.1-x86_64.AppImage` | `04F0D73BAA3D9063BD72C4C510CBDFD2B041E16B3EA5174411346920B35457E8` |
+| **Windows Wheel (`cp312-abi3`)** | `bitchat-0.3.1-cp312-abi3-win_amd64.whl` | `B5F7DB74CF31F39260106C3FB6FC66F5E090AC9BACB1349B8E1D2849ACF7C5D0` |
+| **Linux Wheel (`cp312-abi3`)** | `bitchat-0.3.1-cp312-abi3-linux_x86_64.whl` | `82E238D949B6103FA36D29B07FAB4FE748014954D9A56DAB284E202672265A2B` |
+| **Source Archive (`sdist`)** | `bitchat-0.3.1.tar.gz` | `3743DD4F3EF00543C2D759B8B33BDE8010A2DA6B513B2B59ACFB50D8B6969067` |
 
 ---
 

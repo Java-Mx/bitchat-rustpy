@@ -6,7 +6,7 @@ labels: ["enhancement"]
 assignees: []
 ---
 
-> **Security Notice:** Do **NOT** use public feature requests to disclose security vulnerabilities. See [`SECURITY.md`](../../SECURITY.md) for private reporting via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-python/security/advisories/new).
+> **Security Notice:** Do **NOT** use public feature requests to disclose security vulnerabilities. See [`SECURITY.md`](../../SECURITY.md) for private reporting via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new).
 
 ## Problem Description
 <!-- A clear and concise description of what the problem is or what capability is currently missing. -->
