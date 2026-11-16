@@ -108,6 +108,22 @@
       "primary": false,
       "install_command": "pip install bitchat-0.3.1.tar.gz",
       "description": "Complete Python + Rust source distribution archive. Requires Maturin, PyO3, Cargo, and Rust compiler to build native core."
+    },
+    {
+      "id": "winget-manifest",
+      "platform": "windows",
+      "os_display": "Windows Package Manager Manifest",
+      "format": "WinGet Manifest (.yaml)",
+      "filename": "Java-Mx.BitChat.yaml",
+      "arch": "x64 (64-bit)",
+      "min_version": "WinGet 1.6+",
+      "size_human": "1.40 KB",
+      "size_bytes": 1435,
+      "sha256": "C614823018AA0A85ADF256C98FAAA71069EF57012B00862F2C1681B10A6F4A04",
+      "download_url": "https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.1/Java-Mx.BitChat.yaml",
+      "primary": false,
+      "install_command": "winget install bitchat-rustpy",
+      "description": "Official WinGet package manifest asset published with the v0.3.1 GitHub release."
     }
   ],
   "platform_support": {

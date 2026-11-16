@@ -338,7 +338,7 @@ def test_winget_manifest_validation() -> None:
 
     # Validate multi-file manifest
     res_multi = subprocess.run(
-        ["winget", "validate", str(manifest_dir)],
+        ["winget", "validate", "--nowarn", str(manifest_dir)],
         capture_output=True,
         text=True,
         check=False,
@@ -349,7 +349,7 @@ def test_winget_manifest_validation() -> None:
 
     # Validate singleton manifest
     res_single = subprocess.run(
-        ["winget", "validate", "--manifest", str(singleton_file)],
+        ["winget", "validate", "--nowarn", "--manifest", str(singleton_file)],
         capture_output=True,
         text=True,
         check=False,

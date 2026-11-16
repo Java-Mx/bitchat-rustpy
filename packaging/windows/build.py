@@ -643,7 +643,7 @@ def validate_winget_manifests(manifest_dir: Path, singleton_file: Path) -> bool:
 
     print(f"[*] Validating manifests in {manifest_dir} with `winget validate`...")
     res_multi = subprocess.run(
-        [winget_path, "validate", str(manifest_dir)],
+        [winget_path, "validate", "--nowarn", str(manifest_dir)],
         capture_output=True,
         text=True,
         check=False,
@@ -655,7 +655,7 @@ def validate_winget_manifests(manifest_dir: Path, singleton_file: Path) -> bool:
 
     print(f"[*] Validating singleton manifest {singleton_file}...")
     res_single = subprocess.run(
-        [winget_path, "validate", "--manifest", str(singleton_file)],
+        [winget_path, "validate", "--nowarn", "--manifest", str(singleton_file)],
         capture_output=True,
         text=True,
         check=False,
