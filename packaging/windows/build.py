@@ -484,26 +484,26 @@ def generate_winget_manifests(
 ) -> tuple[Path, Path]:
     """Generate official multi-file manifests and repository singleton manifest."""
     installer_filename = f"BitChat-{version}-windows-x64.exe"
-    base_release_url = "https://github.com/Java-Mx/bitchat-python/releases/download"
+    base_release_url = "https://github.com/Java-Mx/bitchat-rustpy/releases/download"
     installer_url = f"{base_release_url}/v{version}/{installer_filename}"
     rel_date = release_date or datetime.date.today().isoformat()
 
     manifest_dir = MANIFESTS_ROOT / "j" / "Java-Mx" / "BitChat" / version
     manifest_dir.mkdir(parents=True, exist_ok=True)
 
-    version_yaml = f"""# Created using BitChat automated packaging workflow
-# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.6.0.schema.json
+    version_yaml = f"""# Created using wingetcreate 1.12.13.0
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.28.0.schema.json
 
 PackageIdentifier: Java-Mx.BitChat
 PackageVersion: {version}
 DefaultLocale: en-US
 ManifestType: version
-ManifestVersion: 1.6.0
+ManifestVersion: 1.28.0
 """
     (manifest_dir / "Java-Mx.BitChat.yaml").write_text(version_yaml, encoding="utf-8")
 
-    installer_yaml = f"""# Created using BitChat automated packaging workflow
-# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+    installer_yaml = f"""# Created using wingetcreate 1.12.13.0
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.28.0.schema.json
 
 PackageIdentifier: Java-Mx.BitChat
 PackageVersion: {version}
@@ -523,51 +523,61 @@ Installers:
     InstallerUrl: {installer_url}
     InstallerSha256: {installer_sha256}
 ManifestType: installer
-ManifestVersion: 1.6.0
+ManifestVersion: 1.28.0
 """
     (manifest_dir / "Java-Mx.BitChat.installer.yaml").write_text(
         installer_yaml, encoding="utf-8"
     )
 
     short_description = (
-        "Python terminal client for the BitChat protocol over Bluetooth Low Energy"
+        "Decentralized encrypted peer-to-peer mesh terminal chat client "
+        "built with Python and Rust"
     )
     description = (
-        "BitChat is a secure peer-to-peer terminal chat client operating over "
-        "Bluetooth Low Energy (BLE).\n"
-        "  It features decentralized mesh networking, end-to-end encryption with "
-        "Noise Protocol / X25519 / AES-GCM,\n"
-        "  and an interactive terminal user interface built with Textual."
+        "BitChat RustPy is a decentralized, end-to-end encrypted peer-to-peer "
+        "mesh chat application for the terminal operating over "
+        "Bluetooth Low Energy (BLE) and local area networks (LAN).\n"
+        "  Built with Python and a native Rust core (_bitchat_core), it "
+        "features authenticated Noise XX sessions, multi-hop mesh routing,\n"
+        "  and an interactive Textual terminal user interface with no servers "
+        "or accounts required."
     )
 
-    locale_yaml = f"""# Created using BitChat automated packaging workflow
-# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+    locale_yaml = f"""# Created using wingetcreate 1.12.13.0
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.28.0.schema.json
 
 PackageIdentifier: Java-Mx.BitChat
 PackageVersion: {version}
 PackageLocale: en-US
 Publisher: Java-Mx
 PublisherUrl: https://github.com/Java-Mx
-PublisherSupportUrl: https://github.com/Java-Mx/bitchat-python/issues
-PackageName: BitChat
-PackageUrl: https://github.com/Java-Mx/bitchat-python
+PublisherSupportUrl: https://github.com/Java-Mx/bitchat-rustpy/issues
+PackageName: BitChat RustPy
+PackageUrl: https://github.com/Java-Mx/bitchat-rustpy
 License: MIT
-LicenseUrl: https://github.com/Java-Mx/bitchat-python/blob/main/LICENSE
+LicenseUrl: https://github.com/Java-Mx/bitchat-rustpy/blob/main/LICENSE
 Copyright: Copyright (c) BitChat Contributors
 ShortDescription: {short_description}
 Description: |-
   {description}
-Moniker: bitchat
+Moniker: bitchat-rustpy
 Tags:
-  - bluetooth
+  - bitchat
+  - bitchat-rustpy
+  - bitchat-rustpyl
   - ble
+  - bluetooth
   - chat
+  - lan
   - mesh
   - p2p
+  - python
+  - rust
   - terminal
-ReleaseNotesUrl: https://github.com/Java-Mx/bitchat-python/releases/tag/v{version}
+  - tui
+ReleaseNotesUrl: https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v{version}
 ManifestType: defaultLocale
-ManifestVersion: 1.6.0
+ManifestVersion: 1.28.0
 """
     (manifest_dir / "Java-Mx.BitChat.locale.en-US.yaml").write_text(
         locale_yaml, encoding="utf-8"
@@ -577,31 +587,38 @@ ManifestVersion: 1.6.0
     winget_pkg_dir.mkdir(parents=True, exist_ok=True)
     singleton_file = winget_pkg_dir / "Java-Mx.BitChat.yaml"
 
-    singleton_yaml = f"""# yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.6.0.schema.json
+    singleton_yaml = f"""# yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.28.0.schema.json
 
 PackageIdentifier: Java-Mx.BitChat
 PackageVersion: {version}
 PackageLocale: en-US
 Publisher: Java-Mx
 PublisherUrl: https://github.com/Java-Mx
-PublisherSupportUrl: https://github.com/Java-Mx/bitchat-python/issues
-PackageName: BitChat
-PackageUrl: https://github.com/Java-Mx/bitchat-python
+PublisherSupportUrl: https://github.com/Java-Mx/bitchat-rustpy/issues
+PackageName: BitChat RustPy
+PackageUrl: https://github.com/Java-Mx/bitchat-rustpy
 License: MIT
-LicenseUrl: https://github.com/Java-Mx/bitchat-python/blob/main/LICENSE
+LicenseUrl: https://github.com/Java-Mx/bitchat-rustpy/blob/main/LICENSE
 Copyright: Copyright (c) BitChat Contributors
 ShortDescription: {short_description}
 Description: |-
   {description}
-Moniker: bitchat
+Moniker: bitchat-rustpy
 Tags:
-  - bluetooth
+  - bitchat
+  - bitchat-rustpy
+  - bitchat-rustpyl
   - ble
+  - bluetooth
   - chat
+  - lan
   - mesh
   - p2p
+  - python
+  - rust
   - terminal
-ReleaseNotesUrl: https://github.com/Java-Mx/bitchat-python/releases/tag/v{version}
+  - tui
+ReleaseNotesUrl: https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v{version}
 Installers:
   - Architecture: x64
     InstallerType: inno
@@ -610,7 +627,7 @@ Installers:
     InstallerSha256: {installer_sha256}
     UpgradeBehavior: install
 ManifestType: singleton
-ManifestVersion: 1.6.0
+ManifestVersion: 1.28.0
 """
     singleton_file.write_text(singleton_yaml, encoding="utf-8")
 
