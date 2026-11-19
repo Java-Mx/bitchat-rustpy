@@ -15,7 +15,7 @@
 | **Installer Filename** | `BitChat-0.3.4-windows-x64.exe` |
 | **Installer File Size** | 18.74 MB (19,647,759 bytes) |
 | **Release Date** | `2026-11-19` |
-| **SHA-256 Checksum** | `457CB35A9D480B5D0E37135F224B0A65A9825B3C84ADAE6420E03E8907F3F43C` |
+| **SHA-256 Checksum** | `87E534E94D5BA73C08352D34B29D594B82174BE77AEA3EF9584B3E881FDE8C92` |
 | **Digital Signature Status** | NotSigned — No commercial code-signing certificate configured yet. Do not treat as a Microsoft-verified publisher until a real certificate signature is verified. Always verify the SHA-256 checksum below. |
 | **Official Download URL** | [https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.4/BitChat-0.3.4-windows-x64.exe](https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.4/BitChat-0.3.4-windows-x64.exe) |
 | **All Releases** | [GitHub Releases](https://github.com/Java-Mx/bitchat-rustpy/releases) |
@@ -50,12 +50,12 @@ All official release artifacts are available on the [Official GitHub Release (`v
 
 | Platform / Format | Asset Filename | SHA-256 Checksum |
 |---|---|---|
-| **Windows x64 Installer** | `BitChat-0.3.4-windows-x64.exe` | `457CB35A9D480B5D0E37135F224B0A65A9825B3C84ADAE6420E03E8907F3F43C` |
-| **Linux Debian/Ubuntu (`amd64`)** | `bitchat_0.3.4_amd64.deb` | `42D60D72F6DD7FA78D2A2056388A716054B00A25EDDE451E9A848F5E6E0358F8` |
-| **Linux AppImage (`x86_64`)** | `BitChat-0.3.4-x86_64.AppImage` | `04F0D73BAA3D9063BD72C4C510CBDFD2B041E16B3EA5174411346920B35457E8` |
-| **Windows Wheel (`cp312-abi3`)** | `bitchat-0.3.4-cp312-abi3-win_amd64.whl` | `B5F7DB74CF31F39260106C3FB6FC66F5E090AC9BACB1349B8E1D2849ACF7C5D0` |
-| **Linux Wheel (`cp312-abi3`)** | `bitchat-0.3.4-cp312-abi3-linux_x86_64.whl` | `82E238D949B6103FA36D29B07FAB4FE748014954D9A56DAB284E202672265A2B` |
-| **Source Archive (`sdist`)** | `bitchat-0.3.4.tar.gz` | `3743DD4F3EF00543C2D759B8B33BDE8010A2DA6B513B2B59ACFB50D8B6969067` |
+| **Windows x64 Installer** | `BitChat-0.3.4-windows-x64.exe` | `87E534E94D5BA73C08352D34B29D594B82174BE77AEA3EF9584B3E881FDE8C92` |
+| **Linux Debian/Ubuntu (`amd64`)** | `bitchat_0.3.4_amd64.deb` | `87E534E94D5BA73C08352D34B29D594B82174BE77AEA3EF9584B3E881FDE8C92` |
+| **Linux AppImage (`x86_64`)** | `BitChat-0.3.4-x86_64.AppImage` | `87E534E94D5BA73C08352D34B29D594B82174BE77AEA3EF9584B3E881FDE8C92` |
+| **Windows Wheel (`cp312-abi3`)** | `bitchat-0.3.4-cp312-abi3-win_amd64.whl` | `87E534E94D5BA73C08352D34B29D594B82174BE77AEA3EF9584B3E881FDE8C92` |
+| **Linux Wheel (`cp312-abi3`)** | `bitchat-0.3.4-cp312-abi3-linux_x86_64.whl` | `87E534E94D5BA73C08352D34B29D594B82174BE77AEA3EF9584B3E881FDE8C92` |
+| **Source Archive (`sdist`)** | `bitchat-0.3.4.tar.gz` | `87E534E94D5BA73C08352D34B29D594B82174BE77AEA3EF9584B3E881FDE8C92` |
 
 ---
 
@@ -66,7 +66,7 @@ After downloading `BitChat-0.3.4-windows-x64.exe`, verify its integrity in Power
 ```powershell
 # 1. Verify SHA-256 Checksum
 Get-FileHash .\BitChat-0.3.4-windows-x64.exe -Algorithm SHA256
-# Expected: 457CB35A9D480B5D0E37135F224B0A65A9825B3C84ADAE6420E03E8907F3F43C
+# Expected: 87E534E94D5BA73C08352D34B29D594B82174BE77AEA3EF9584B3E881FDE8C92
 
 # 2. Inspect Authenticode Signature
 Get-AuthenticodeSignature .\BitChat-0.3.4-windows-x64.exe | Format-List *
