@@ -1,6 +1,6 @@
 # Maintainer: Java-Mx <https://github.com/Java-Mx/bitchat-rustpy>
 pkgname=bitchat-rustpy
-pkgver=0.3.3
+pkgver=0.3.4
 pkgrel=1
 pkgdesc="Decentralized, encrypted peer-to-peer mesh chat over Bluetooth Low Energy and LAN/Wi-Fi (Rust + Python hybrid)"
 arch=('x86_64')

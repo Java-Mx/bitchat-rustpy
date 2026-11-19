@@ -1,8 +1,8 @@
 # BitChat Architecture & Rust Migration Roadmap
 
-This document defines the canonical 7-stage engineering roadmap for **BitChat RustPy**, tracking its progression from a pure-Python application (`v0.1.0`–`v0.2.1`) through the current hybrid Python + authoritative Rust protocol architecture (`v0.3.3`) toward a standalone native Rust application.
+This document defines the canonical 7-stage engineering roadmap for **BitChat RustPy**, tracking its progression from a pure-Python application (`v0.1.0`–`v0.2.1`) through the current hybrid Python + authoritative Rust protocol & native BLE architecture (`v0.3.4`) toward a standalone native Rust application.
 
-> **Engineering Policy:** This roadmap tracks architectural milestones and testable acceptance criteria without promising calendar release dates. We strictly distinguish between **(a) Completed & Production-Authoritative**, **(b) Native Foundations Integrated with Python I/O**, and **(c) Planned Future Work**. BitChat `v0.3.3` is a hybrid Python + Rust application (~50–55% Rust architectural ownership across protocol-critical paths) and is **not** yet a 100% native Rust binary.
+> **Engineering Policy:** This roadmap tracks architectural milestones and testable acceptance criteria without promising calendar release dates. We strictly distinguish between **(a) Completed & Production-Authoritative**, **(b) Native Foundations Integrated with Python I/O**, and **(c) Planned Future Work**. BitChat `v0.3.4` is a hybrid Python + Rust application (~60–65% Rust architectural ownership across protocol, cryptography, mesh, and native BLE drivers) and is **not** yet a 100% native Rust binary.
 
 ---
 
@@ -14,9 +14,9 @@ This document defines the canonical 7-stage engineering roadmap for **BitChat Ru
 | **Stage 1 — Protocol & Mesh Hot-Path Core** | Hybrid Python + Rust `bitchat._bitchat_core` (binary codec, padding, fragmentation, reassembly, TCP framing, dedup, rate limiting, TUI overhaul, uninstaller) | ✅ **Completed** | `v0.3.1` |
 | **Stage 2 / Phase 2 — Native Rust Cryptography & Foundations** | Native Rust `X25519`, `Ed25519`, `ChaCha20-Poly1305`, `AES-256-GCM`, `HKDF`, `PBKDF2`, `Zeroize`, Noise XX engine, 12-phase FSM, LAN/BLE helper foundations | ✅ **Completed** | `v0.3.2` |
 | **Phase 2.2 / Stage 3 — Authoritative Rust Protocol & Peer State Engine** | Authoritative `NativeNoiseSession`, single-FFI `NativeProtocolEngine`, `NativePeerStateEngine`, authoritative `NativeMeshRouter` / `NativeStoreAndForwardQueue` / `NativeAckTracker`, collision-safe `bitchat-tui` interop, bounded queues, runtime LAN IP limiter & BLE ATT MTU sizing | ✅ **Completed** | `v0.3.3` |
+| **Phase 3 / Stage 5 — Native Rust BLE Transport, Noise XX over BLE & UI Stability** | Modular native Rust BLE transport (`rust/bitchat-core/src/ble/`: Windows WinRT, Linux BlueZ `zbus`, macOS CoreBluetooth probe), decoupled Windows GATT/companion advertisement lifecycle, `bitchat-tui` binary DM payload decoding, live Bluetooth Settings diagnostics, and mouse-click navigation jitter elimination | ✅ **Completed (Cross-device physical radio interop pending secondary hardware)** | `v0.3.4` |
 | **Stage 4 — Fully Native Rust LAN Transport** | Move full UDP discovery and TCP server/client socket lifecycle & async I/O loops into Rust (Tokio) | 🔄 **Foundations Wired; Full Async I/O Planned** | Future (`v0.4.x`) |
-| **Stage 5 — Fully Native Rust BLE Transport** | Move full OS BLE Central & Peripheral drivers (WinRT, BlueZ D-Bus, CoreBluetooth) into Rust | 🔄 **State/MTU Foundations Wired; OS Drivers Planned** | Future (`v0.4.x`–`v0.5.x`) |
-| **Stage 6 — Native Rust Session Coordinator & Secure Local Storage** | Move coordinator lifecycle, `~/.bitchat/` storage (`identity.json`, `config.json`, optional passphrase encryption), logging, and uninstaller into Rust | 📋 **Planned** | Future (`v0.6.x`) |
+| **Stage 6 — Native Rust Session Coordinator & Secure Local Storage** | Move coordinator lifecycle, `~/.bitchat/` storage (`identity.json`, `config.json`, optional passphrase encryption), logging, and uninstaller into Rust | 📋 **Planned** | Future (`v0.5.x`) |
 | **Stage 7 — Native Rust TUI & CLI (Retire Python/PyO3)** | Replace Python Textual UI & CLI with native Rust UI (`ratatui`) and CLI; remove Python, PyO3, and Maturin | 📋 **Planned (Final Objective)** | Future (`v1.0.0`) |
 
 ---

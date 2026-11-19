@@ -37,7 +37,7 @@ cd packaging/linux/snap
 snapcraft
 
 # Install locally
-sudo snap install bitchat_0.3.3_amd64.snap --dangerous
+sudo snap install bitchat_0.3.4_amd64.snap --dangerous
 
 # Connect required BlueZ interface
 sudo snap connect bitchat:bluez

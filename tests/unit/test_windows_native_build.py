@@ -39,7 +39,7 @@ def test_error_classification_distinguishes_copy_lock_from_rust_compile_error() 
 
     maturin_lock_stderr = (
         "   Compiling pyo3 v0.24.2\n"
-        "   Compiling bitchat-core v0.3.3\n"
+        "   Compiling bitchat-core v0.3.4\n"
         "    Finished `release` profile [optimized] target(s) in 12.34s\n"
         "💥 maturin failed\n"
         "  Caused by: Failed to add the files to the wheel\n"

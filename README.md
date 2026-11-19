@@ -41,7 +41,7 @@
 <!-- Release & Distribution -->
 [![Release](https://img.shields.io/github/v/release/Java-Mx/bitchat-rustpy?display_name=tag&label=Release&color=10B981&style=flat-square)](https://github.com/Java-Mx/bitchat-rustpy/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/Java-Mx/bitchat-rustpy/total?label=Downloads&color=0EA5E9&style=flat-square)](https://github.com/Java-Mx/bitchat-rustpy/releases)
-[![WinGet](https://img.shields.io/badge/WinGet-v0.3.3%20PR%20Pending-D97706?style=flat-square)](https://github.com/microsoft/winget-pkgs/pull/483934)
+[![WinGet](https://img.shields.io/badge/WinGet-v0.3.4%20PR%20Pending-D97706?style=flat-square)](https://github.com/microsoft/winget-pkgs/pull/483934)
 [![License](https://img.shields.io/github/license/Java-Mx/bitchat-rustpy?label=License&color=2563EB&style=flat-square)](LICENSE)
 
 <!-- Repository & Community -->
@@ -135,8 +135,8 @@ BitChat provides dedicated distribution channels tailored for each platform:
 #### WinGet
 
 > [!NOTE]
-> **Status:** Published in Microsoft's official WinGet repository (`Java-Mx.BitChat`, initial `v0.1.0` merged in [microsoft/winget-pkgs#443445](https://github.com/microsoft/winget-pkgs/pull/443445); `v0.3.1` update with moniker `bitchat-rustpy` merged in [microsoft/winget-pkgs#481727](https://github.com/microsoft/winget-pkgs/pull/481727); **`v0.3.3` update submitted in [microsoft/winget-pkgs#483934](https://github.com/microsoft/winget-pkgs/pull/483934) — pending Microsoft validation & merge**). Until `#483934` merges and propagates, `winget` serves `0.3.1` or you can install `v0.3.3` directly via the GitHub Release installer or local manifest below.
-> Official WinGet manifests are maintained and validated in the repository at [`manifests/j/Java-Mx/BitChat/0.3.3/`](manifests/j/Java-Mx/BitChat/0.3.3/).
+> **Status:** Published in Microsoft's official WinGet repository (`Java-Mx.BitChat`, initial `v0.1.0` merged in [microsoft/winget-pkgs#443445](https://github.com/microsoft/winget-pkgs/pull/443445); `v0.3.1` update with moniker `bitchat-rustpy` merged in [microsoft/winget-pkgs#481727](https://github.com/microsoft/winget-pkgs/pull/481727); **`v0.3.4` update submitted in [microsoft/winget-pkgs#483934](https://github.com/microsoft/winget-pkgs/pull/483934) — pending Microsoft validation & merge**). Until `#483934` merges and propagates, `winget` serves `0.3.1` or you can install `v0.3.4` directly via the GitHub Release installer or local manifest below.
+> Official WinGet manifests are maintained and validated in the repository at [`manifests/j/Java-Mx/BitChat/0.3.4/`](manifests/j/Java-Mx/BitChat/0.3.4/).
 
 Install via Microsoft WinGet:
 ```powershell
@@ -147,7 +147,7 @@ winget install --id Java-Mx.BitChat --exact
 
 To test or install directly from this repository's local manifest:
 ```powershell
-winget install --manifest manifests/j/Java-Mx/BitChat/0.3.3/
+winget install --manifest manifests/j/Java-Mx/BitChat/0.3.4/
 ```
 
 **Upgrade:**
@@ -167,7 +167,7 @@ The self-contained Windows executable installer (`BitChat-<version>-windows-x64.
 1. Download `BitChat-<version>-windows-x64.exe` and `BitChat-<version>-windows-x64.exe.sha256` from [GitHub Releases](https://github.com/Java-Mx/bitchat-rustpy/releases) (see [`docs/DOWNLOAD.md`](docs/DOWNLOAD.md) and [`docs/platform/WINDOWS.md`](docs/platform/WINDOWS.md)).
 2. Verify the SHA-256 checksum in PowerShell:
    ```powershell
-   Get-FileHash .\BitChat-0.3.3-windows-x64.exe -Algorithm SHA256
+   Get-FileHash .\BitChat-0.3.4-windows-x64.exe -Algorithm SHA256
    ```
 3. Run the installer. The 7-screen setup wizard presents the [Terms of Use](TERMS_OF_USE.md) and [Privacy Policy](PRIVACY_POLICY.md), defaults to user-scope installation (`%LOCALAPPDATA%\Programs\BitChat`), and lets you configure Desktop/Start Menu shortcuts, user `PATH` integration, post-install launch, and optional per-user Windows sign-in startup.
 4. Open a **new** PowerShell or Command Prompt terminal (existing terminals must be reopened to pick up `PATH` changes) and launch:
@@ -485,7 +485,7 @@ Verify that BitChat is discoverable on your PATH and outputs the version:
 
 ```bash
 bitchat --version
-# Expected: bitchat 0.3.3
+# Expected: bitchat 0.3.4
 
 bitchat --help
 # Displays command-line options (--cli, --tui, --configure, --startup, --uninstall)
@@ -510,7 +510,7 @@ bitchat --cli
   - Fallback 1: Download `BitChat-<version>-windows-x64.exe` from [GitHub Releases](https://github.com/Java-Mx/bitchat-rustpy/releases) and run setup.
   - Fallback 2: Install directly from the local repository manifest:
     ```powershell
-    winget install --manifest manifests/j/Java-Mx/BitChat/0.3.3/
+    winget install --manifest manifests/j/Java-Mx/BitChat/0.3.4/
     ```
 
 ### 3. Installation failed
@@ -1147,7 +1147,7 @@ uv run --no-sync pytest -q
 - **Documentation Index:** [`docs/INDEX.md`](docs/INDEX.md)
 - **Support & Troubleshooting:** [`SUPPORT.md`](SUPPORT.md)
 - **Rust Migration Roadmap:** [`docs/ROADMAP.md`](docs/ROADMAP.md)
-- **`v0.3.3` Release Notes & Migration Impact:** [`docs/release/V0.3.3-RELEASE-NOTES.md`](docs/release/V0.3.3-RELEASE-NOTES.md), [`docs/release/V0.3.3-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md`](docs/release/V0.3.3-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md), and [`docs/release/PHASE-2.2-IMPLEMENTATION-AND-VERIFICATION-REPORT.md`](docs/release/PHASE-2.2-IMPLEMENTATION-AND-VERIFICATION-REPORT.md)
+- **`v0.3.4` Release Notes & Migration Impact:** [`docs/release/V0.3.4-RELEASE-NOTES.md`](docs/release/V0.3.4-RELEASE-NOTES.md), [`docs/release/V0.3.4-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md`](docs/release/V0.3.4-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md), and [`docs/release/PHASE-2.2-IMPLEMENTATION-AND-VERIFICATION-REPORT.md`](docs/release/PHASE-2.2-IMPLEMENTATION-AND-VERIFICATION-REPORT.md)
 - **Security Policy & Vulnerability Reporting:** [`SECURITY.md`](SECURITY.md) and [`docs/security/THREAT_MODEL.md`](docs/security/THREAT_MODEL.md)
 - **Privacy Policy & Data Handling:** [`PRIVACY_POLICY.md`](PRIVACY_POLICY.md) *(Draft)* and [`docs/security/DATA_HANDLING.md`](docs/security/DATA_HANDLING.md)
 - **Terms of Use:** [`TERMS_OF_USE.md`](TERMS_OF_USE.md) *(Draft)*
@@ -1159,7 +1159,7 @@ uv run --no-sync pytest -q
 
 ## Architecture & Reference Lineage
 
-BitChat `v0.3.3` uses a hybrid **Python + Rust (`rust/bitchat-core` / `bitchat._bitchat_core`)** architecture built with PyO3 and Maturin, with Rust now owning the authoritative Noise XX protocol engine (`NativeNoiseSession`, `NativeProtocolEngine`, `NativePeerStateEngine`, `NativeMeshRouter`, `NativeStoreAndForwardQueue`) as part of the 7-stage engineering roadmap toward ~60% Rust architectural ownership and ultimately a 100% native Rust application (see [`docs/ROADMAP.md`](docs/ROADMAP.md)). Its binary wire framing and Noise XX handshake design originated from the BitChat v1 protocol specification ([`docs/protocol/COMPATIBILITY.md`](docs/protocol/COMPATIBILITY.md)).
+BitChat `v0.3.4` uses a hybrid **Python + Rust (`rust/bitchat-core` / `bitchat._bitchat_core`)** architecture built with PyO3 and Maturin, with Rust now owning the authoritative Noise XX protocol engine (`NativeNoiseSession`, `NativeProtocolEngine`, `NativePeerStateEngine`, `NativeMeshRouter`, `NativeStoreAndForwardQueue`) as part of the 7-stage engineering roadmap toward ~60% Rust architectural ownership and ultimately a 100% native Rust application (see [`docs/ROADMAP.md`](docs/ROADMAP.md)). Its binary wire framing and Noise XX handshake design originated from the BitChat v1 protocol specification ([`docs/protocol/COMPATIBILITY.md`](docs/protocol/COMPATIBILITY.md)).
 
 ---
 

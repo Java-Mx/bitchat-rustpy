@@ -153,7 +153,7 @@ When two peers attempt to initiate a private conversation simultaneously:
 
 ---
 
-## 9. Native Rust (`rust/bitchat-core`) & Authoritative Session Ownership (`v0.3.3`)
+## 9. Native Rust (`rust/bitchat-core`) & Authoritative Session Ownership (`v0.3.4`)
 
 In `rust/bitchat-core/src/noise.rs` (`NativeNoiseSession`) and `rust/bitchat-core/src/engine.rs` (`NativeProtocolEngine`, `NativePeerStateEngine`), Rust is the single authoritative owner of Noise handshake state, transport cipher state, nonce counters, replay windows, and secret zeroization (`zeroize::ZeroizeOnDrop`):
 

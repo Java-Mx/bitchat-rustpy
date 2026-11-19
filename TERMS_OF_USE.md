@@ -1,9 +1,9 @@
 # BitChat Terms of Use & Operational Notice
 
-> **DRAFT — LEGAL REVIEW REQUIRED:** This document is a draft operational notice and terms disclosure for the open-source BitChat project (`v0.3.3`). It supplements — and does not restrict, replace, or override — the permissions granted under the [MIT License](LICENSE). Before distributing BitChat in a commercial, enterprise, or regulated environment, this notice should be reviewed by the project publisher or qualified legal counsel.
+> **DRAFT — LEGAL REVIEW REQUIRED:** This document is a draft operational notice and terms disclosure for the open-source BitChat project (`v0.3.4`). It supplements — and does not restrict, replace, or override — the permissions granted under the [MIT License](LICENSE). Before distributing BitChat in a commercial, enterprise, or regulated environment, this notice should be reviewed by the project publisher or qualified legal counsel.
 
 **Effective Date:** November 19, 2026  
-**Applicable Release:** BitChat `v0.3.3`  
+**Applicable Release:** BitChat `v0.3.4`  
 **Repository:** [https://github.com/Java-Mx/bitchat-rustpy](https://github.com/Java-Mx/bitchat-rustpy)
 
 ---
@@ -59,7 +59,7 @@ By running BitChat with an active transport (`Bluetooth LE` or `Local Network (L
 
 ## 6. Security Limitations & No Independent Audit
 
-BitChat is an evolving open-source engineering project (`v0.3.3`):
+BitChat is an evolving open-source engineering project (`v0.3.4`):
 
 - **No Formal Third-Party Audit:** While BitChat uses established cryptographic primitives (`Noise_XX_25519_ChaChaPoly_SHA256`, `X25519`, `Ed25519`, `ChaCha20-Poly1305`, `AES-256-GCM`, `HKDF-SHA256`, `PBKDF2-HMAC-SHA256`) and automated test suites, **the software has not undergone an independent third-party cryptographic or security audit**.
 - **High-Risk Environments:** Do not rely on BitChat as your sole communication channel in life-safety, emergency-response, medical, or high-threat national-security situations where software defects, radio interference, metadata leakage, or undiscovered vulnerabilities could lead to physical harm or severe loss.
@@ -69,7 +69,7 @@ BitChat is an evolving open-source engineering project (`v0.3.3`):
 
 ## 7. Data Loss & Availability Disclaimers
 
-- **Ephemeral Chat History:** Chat messages are held in volatile memory (RAM) during your active session and are not persisted to disk in `v0.3.3`. Exiting the application or running `/clear` permanently erases displayed chat history.
+- **Ephemeral Chat History:** Chat messages are held in volatile memory (RAM) during your active session and are not persisted to disk in `v0.3.4`. Exiting the application or running `/clear` permanently erases displayed chat history.
 - **Best-Effort Delivery:** Wireless BLE links, LAN broadcasts, and multi-hop mesh relays are best-effort transports subject to radio range, packet loss, OS Bluetooth stack limitations, and firewall rules. BitChat does not guarantee message delivery, ordering, or latency.
 
 ---

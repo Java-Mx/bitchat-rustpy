@@ -1,6 +1,6 @@
 # BitChat Documentation Index
 
-Welcome to the central documentation index for **BitChat** (`v0.3.3`), a peer-to-peer encrypted terminal messenger powered by a hybrid Python and Rust (`bitchat._bitchat_core`) architecture over Bluetooth Low Energy (BLE) and Local Area Network (LAN) transports.
+Welcome to the central documentation index for **BitChat** (`v0.3.4`), a peer-to-peer encrypted terminal messenger powered by a hybrid Python and Rust (`bitchat._bitchat_core`) architecture over Bluetooth Low Energy (BLE) and Local Area Network (LAN) transports.
 
 ---
 
@@ -9,11 +9,11 @@ Welcome to the central documentation index for **BitChat** (`v0.3.3`), a peer-to
 | Document | Description |
 | :--- | :--- |
 | [`README.md`](../README.md) | Project overview, feature highlights, quick-start installation, TUI/CLI usage, and architecture summary. |
-| [`docs/DOWNLOAD.md`](DOWNLOAD.md) | Official download links, SHA-256 verification instructions, and package formats for `v0.3.3`. |
+| [`docs/DOWNLOAD.md`](DOWNLOAD.md) | Official download links, SHA-256 verification instructions, and package formats for `v0.3.4`. |
 | [`docs/UNINSTALLATION.md`](UNINSTALLATION.md) | Complete guide to uninstalling BitChat across Windows, Linux, and Python environments (`pip`, `uv`, `pipx`), including `PATH` cleanup and optional user-data removal. |
 | [`SUPPORT.md`](../SUPPORT.md) | Diagnostic commands (`bitchat --configure`), log file locations, troubleshooting steps, and how to get help. |
 | [`Screenshot.md`](../Screenshot.md) | Visual gallery of the BitChat Textual Terminal UI (Home Screen, Chat Screen, Settings, Connection Modal, Help). |
-| [`CHANGELOG.md`](../CHANGELOG.md) | Chronological release history and detailed changelog through `v0.3.3`. |
+| [`CHANGELOG.md`](../CHANGELOG.md) | Chronological release history and detailed changelog through `v0.3.4`. |
 
 ---
 
@@ -32,11 +32,11 @@ Welcome to the central documentation index for **BitChat** (`v0.3.3`), a peer-to
 | Document | Description |
 | :--- | :--- |
 | [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) | Hybrid Python + authoritative Rust (`bitchat._bitchat_core`) system architecture, layer boundaries, threading/asyncio model, and component design. |
-| [`docs/ROADMAP.md`](ROADMAP.md) | 7-stage engineering roadmap from the current hybrid Python/Rust core (`v0.3.3`, Stages 1–3 complete) through native transports to a 100% native Rust application. |
-| [`docs/release/V0.3.3-RELEASE-NOTES.md`](release/V0.3.3-RELEASE-NOTES.md) | Production release notes for `v0.3.3` (Phase 2.2) with verified cross-platform SHA-256 checksums. |
-| [`docs/release/V0.3.3-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md`](release/V0.3.3-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md) | Detailed `v0.3.2 → v0.3.3` Rust migration impact report with measured benchmarks, FFI/memory analysis, and security evidence. |
+| [`docs/ROADMAP.md`](ROADMAP.md) | 7-stage engineering roadmap from the current hybrid Python/Rust core (`v0.3.4`, Stages 1–3 complete) through native transports to a 100% native Rust application. |
+| [`docs/release/V0.3.4-RELEASE-NOTES.md`](release/V0.3.4-RELEASE-NOTES.md) | Production release notes for `v0.3.4` (Phase 2.2) with verified cross-platform SHA-256 checksums. |
+| [`docs/release/V0.3.4-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md`](release/V0.3.4-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md) | Detailed `v0.3.2 → v0.3.4` Rust migration impact report with measured benchmarks, FFI/memory analysis, and security evidence. |
 | [`docs/release/PHASE-2.2-IMPLEMENTATION-AND-VERIFICATION-REPORT.md`](release/PHASE-2.2-IMPLEMENTATION-AND-VERIFICATION-REPORT.md) | Complete Phase 2.2 audit, implementation record, anti-pattern audit, and release verification evidence. |
-| [`docs/REQUIREMENTS.md`](REQUIREMENTS.md) | Functional (`FR-*`) and Non-Functional (`NFR-*`) requirements matrix with current `v0.3.3` implementation status. |
+| [`docs/REQUIREMENTS.md`](REQUIREMENTS.md) | Functional (`FR-*`) and Non-Functional (`NFR-*`) requirements matrix with current `v0.3.4` implementation status. |
 | [`docs/DEVELOPMENT.md`](DEVELOPMENT.md) | Developer environment setup (`uv`, Rust `cargo`, `maturin`), testing, linting, benchmarking, and debugging guide. |
 | [`docs/RELEASE_PROCESS.md`](RELEASE_PROCESS.md) | Release engineering workflow, version synchronization checklist, CI/CD pipelines, packaging scripts, and artifact verification. |
 
@@ -51,7 +51,7 @@ Welcome to the central documentation index for **BitChat** (`v0.3.3`), a peer-to
 | [`docs/protocol/MESSAGE_TYPES.md`](protocol/MESSAGE_TYPES.md) | Complete specification of the protocol `MessageType` codes (`0x01`–`0x25`) and their inner payload formats. |
 | [`docs/protocol/FRAGMENTATION.md`](protocol/FRAGMENTATION.md) | MTU-aware packet fragmentation (`> 500` bytes), 13-byte fragment headers, inter-fragment pacing, and bounded reassembly (`NativeFragmentReassembler`). |
 | [`docs/protocol/ROUTING.md`](protocol/ROUTING.md) | Multi-hop flood routing, TTL bounds, SHA-256 deduplication cache (`NativePacketDeduplicator`), peer rate limiting (`NativePeerRateLimiter`), and Store-and-Forward buffering (`StoreAndForwardQueue`). |
-| [`docs/protocol/COMPATIBILITY.md`](protocol/COMPATIBILITY.md) | Interoperability status between BitChat RustPy (`v0.3.3`) and external BitChat reference implementations (`bitchat-tui`), including controlled legacy peer-ID compatibility. |
+| [`docs/protocol/COMPATIBILITY.md`](protocol/COMPATIBILITY.md) | Interoperability status between BitChat RustPy (`v0.3.4`) and external BitChat reference implementations (`bitchat-tui`), including controlled legacy peer-ID compatibility. |
 
 ---
 

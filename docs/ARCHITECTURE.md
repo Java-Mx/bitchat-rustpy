@@ -21,7 +21,7 @@ Transport Abstraction Layer (BaseTransport — bitchat.transport)
 
 ## Native Rust Core (`rust/bitchat-core` / `bitchat._bitchat_core`)
 
-In `v0.3.3` (Phase 2.2), protocol-critical wire codecs, cryptography, Noise XX sessions, mesh routing, peer state management, collision-safe identity binding, and transport state helpers execute authoritatively in compiled Rust (`rust/bitchat-core/src/`) via PyO3 (`abi3-py312`) and Maturin (`src/bitchat/_native.py`):
+In `v0.3.4` (Phase 2.2), protocol-critical wire codecs, cryptography, Noise XX sessions, mesh routing, peer state management, collision-safe identity binding, and transport state helpers execute authoritatively in compiled Rust (`rust/bitchat-core/src/`) via PyO3 (`abi3-py312`) and Maturin (`src/bitchat/_native.py`):
 
 - **`protocol.rs`**: `encode_packet_raw`, `decode_packet_raw`, `pad_packet_data`, `unpad_packet_data`, `get_optimal_block_size`, `peer_id_to_hex`, `peer_id_from_hex`, `classify_peer_id_raw`, `normalize_peer_id_raw`.
 - **`fragmentation.rs`**: `should_fragment_bytes`, `split_chunks`, `create_fragment_payload`, `parse_fragment_payload`, `fragment_encoded_packet_raw`, and `NativeFragmentReassembler`.
@@ -231,7 +231,7 @@ All transports implement `BaseTransport` (`bitchat.transport.base`):
 3. **Transport Switching & Persistent Device Identity**:
    - Switching between `Bluetooth LE`, `Local Network (LAN)`, and `Offline Mode` (`/transport`, Connection Modal, or Settings screen `F3`) cleanly stops the outgoing transport, closes active sockets/GATT links, and tears down ephemeral `NoiseSession` cipher states.
    - Your persistent device identity (`LocalIdentity` stored in `~/.bitchat/identity.json`) is **preserved** across transport switches and application restarts so your `peer_id` and 64-character SHA-256 fingerprint remain stable for trusted contacts.
-   - `~/.bitchat/identity.json` stores private keys as hexadecimal strings protected by OS file permissions (POSIX mode `0600`; protected current-user Windows DACL) and cross-process file locking (`identity.json.lock`); keys are not encrypted with a user passphrase at rest in `v0.3.3`.
+   - `~/.bitchat/identity.json` stores private keys as hexadecimal strings protected by OS file permissions (POSIX mode `0600`; protected current-user Windows DACL) and cross-process file locking (`identity.json.lock`); keys are not encrypted with a user passphrase at rest in `v0.3.4`.
 
 ## Dependency Rules
 - Higher layers depend on lower layers, never the reverse.

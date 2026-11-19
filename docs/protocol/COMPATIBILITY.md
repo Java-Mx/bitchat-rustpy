@@ -1,14 +1,14 @@
-# BitChat Protocol Interoperability & Compatibility (`v0.3.3`)
+# BitChat Protocol Interoperability & Compatibility (`v0.3.4`)
 
-This document specifies the wire-level compatibility between BitChat (`bitchat-rustpy` `v0.3.3`, including its authoritative `rust/bitchat-core` native protocol engine) and external BitChat v1 reference implementations (including `bitchat-tui`), along with intentional security hardening differences.
+This document specifies the wire-level compatibility between BitChat (`bitchat-rustpy` `v0.3.4`, including its authoritative `rust/bitchat-core` native protocol engine) and external BitChat v1 reference implementations (including `bitchat-tui`), along with intentional security hardening differences.
 
 ---
 
-## 1. Internal Python ↔ Rust Core Differential Parity (`v0.3.3`)
+## 1. Internal Python ↔ Rust Core Differential Parity (`v0.3.4`)
 
 Within this repository, `rust/bitchat-core` (`bitchat._bitchat_core`) is the authoritative production protocol engine while pure-Python reference modules (`PyNoiseSession`, `PyMeshRouter`, `PyStoreAndForwardQueue`, `py_encode_packet`, `py_decode_packet`, etc.) remain 100% byte-for-byte compatible and continuously verified by `tests/unit/test_native_core.py` and `tests/interoperability/test_tui_interop.py`.
 
-### Controlled Legacy `bitchat-tui` Peer-ID Interoperability (`v0.3.3`)
+### Controlled Legacy `bitchat-tui` Peer-ID Interoperability (`v0.3.4`)
 - **Modern RustPy Peers:** Strictly enforce `peer_id == SHA-256(remote_x25519_public)[:8]` after Noise XX authentication. Any mismatch fails closed (`AuthenticationError`).
 - **Legacy `bitchat-tui` Peers:** Recognized exclusively when the 8-byte wire identifier matches the exact 4-byte random zero-extended layout (`[b0, b1, b2, b3, 0, 0, 0, 0]` where `b0..b4 != [0, 0, 0, 0]`).
   1. The Noise XX static public key is authenticated first.

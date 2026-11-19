@@ -138,15 +138,15 @@ def test_html_parsing_and_internal_references():
 
 
 def test_releases_json_schema_and_checksum_consistency():
-    """Verify that releases.json contains accurate v0.3.3 data and SHA-256 hashes."""
+    """Verify that releases.json contains accurate v0.3.4 data and SHA-256 hashes."""
     data_path = WEBSITE_DIR / "assets" / "data" / "releases.json"
     assert data_path.is_file()
 
     with open(data_path, encoding="utf-8") as f:
         data = json.load(f)
 
-    assert data["version"] == "0.3.3"
-    assert data["release_tag"] == "v0.3.3"
+    assert data["version"] == "0.3.4"
+    assert data["release_tag"] == "v0.3.4"
     assert len(data["packages"]) >= 7
 
     # Ensure windows installer checksum matches the official WinGet manifest hash
@@ -156,7 +156,7 @@ def test_releases_json_schema_and_checksum_consistency():
         / "j"
         / "Java-Mx"
         / "BitChat"
-        / "0.3.3"
+        / "0.3.4"
         / "Java-Mx.BitChat.installer.yaml"
     ).read_text(encoding="utf-8")
     manifest_sha = next(
@@ -166,7 +166,7 @@ def test_releases_json_schema_and_checksum_consistency():
     )
 
     win_pkg = next(p for p in data["packages"] if p["id"] == "win-exe")
-    assert win_pkg["filename"] == "BitChat-0.3.3-windows-x64.exe"
+    assert win_pkg["filename"] == "BitChat-0.3.4-windows-x64.exe"
     assert len(win_pkg["sha256"]) == 64
     assert win_pkg["sha256"] == manifest_sha
     assert win_pkg["size_bytes"] > 0

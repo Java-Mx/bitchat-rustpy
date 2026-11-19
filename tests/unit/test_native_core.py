@@ -65,13 +65,13 @@ from bitchat.protocol.reassembly import FragmentReassembler, PyFragmentReassembl
 
 
 def test_native_core_is_loaded_and_version_matches() -> None:
-    """Verify the compiled Rust extension module is loaded and reports version 0.3.3."""
+    """Verify the compiled Rust extension module is loaded and reports version 0.3.4."""
     from bitchat import __version__
 
     assert HAS_NATIVE_CORE is True
     assert _core is not None
     assert _core.native_core_version() == __version__
-    assert _core.native_core_version() == "0.3.3"
+    assert _core.native_core_version() == "0.3.4"
 
 
 @pytest.mark.parametrize(

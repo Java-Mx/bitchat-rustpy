@@ -9,15 +9,15 @@
 | Field | Value |
 |---|---|
 | **Application** | BitChat (`Java-Mx.BitChat`) |
-| **Version** | `0.3.3` |
+| **Version** | `0.3.4` |
 | **Publisher** | `Java-Mx` |
 | **Platform / Architecture** | Windows 10 (1809+) & Windows 11 (`x64`) |
-| **Installer Filename** | `BitChat-0.3.3-windows-x64.exe` |
-| **Installer File Size** | 17.76 MB (18,618,754 bytes) |
+| **Installer Filename** | `BitChat-0.3.4-windows-x64.exe` |
+| **Installer File Size** | 18.74 MB (19,647,759 bytes) |
 | **Release Date** | `2026-11-19` |
-| **SHA-256 Checksum** | `BB0609FCE1B3A68A1EA358024FE501093D330CC092D1BD562EAC5FF124ECCEEC` |
+| **SHA-256 Checksum** | `457CB35A9D480B5D0E37135F224B0A65A9825B3C84ADAE6420E03E8907F3F43C` |
 | **Digital Signature Status** | NotSigned — No commercial code-signing certificate configured yet. Do not treat as a Microsoft-verified publisher until a real certificate signature is verified. Always verify the SHA-256 checksum below. |
-| **Official Download URL** | [https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.3/BitChat-0.3.3-windows-x64.exe](https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.3/BitChat-0.3.3-windows-x64.exe) |
+| **Official Download URL** | [https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.4/BitChat-0.3.4-windows-x64.exe](https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.4/BitChat-0.3.4-windows-x64.exe) |
 | **All Releases** | [GitHub Releases](https://github.com/Java-Mx/bitchat-rustpy/releases) |
 
 ---
@@ -44,34 +44,32 @@ Before downloading or installing BitChat, please review:
 
 ---
 
-## All Official `v0.3.3` Release Assets & SHA-256 Checksums
+## All Official `v0.3.4` Release Assets & SHA-256 Checksums
 
-All official release artifacts are available on the [Official GitHub Release (`v0.3.3`)](https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v0.3.3):
+All official release artifacts are available on the [Official GitHub Release (`v0.3.4`)](https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v0.3.4):
 
-| Platform / Format | Asset Filename | Size | SHA-256 Checksum |
-|---|---|---|---|
-| **Windows x64 Installer** | `BitChat-0.3.3-windows-x64.exe` | `17.76 MB` | `BB0609FCE1B3A68A1EA358024FE501093D330CC092D1BD562EAC5FF124ECCEEC` |
-| **Linux Debian/Ubuntu (`amd64`)** | `bitchat_0.3.3_amd64.deb` | `18.30 MB` | `6916C412824EC2A93343FEE39F8975C72613C41BE3D4B6BD453DF77B0A4592A6` |
-| **Linux AppImage (`x86_64`)** | `BitChat-0.3.3-x86_64.AppImage` | `20.75 MB` | `C96FB175C97DBC9C32FA160C8A97AA0E72572DBFF01728B7C48F70F82FD20156` |
-| **Windows Wheel (`cp312-abi3`)** | `bitchat-0.3.3-cp312-abi3-win_amd64.whl` | `987.61 KB` | `3FA7A9608FDEF55005200264877CF7CEB3B3E24F6D8367B61DF8BA6D7CF8B48F` |
-| **Linux Wheel (`cp312-abi3`)** | `bitchat-0.3.3-cp312-abi3-linux_x86_64.whl` | `1012.43 KB` | `4F2136A5070E0173A3C52E5AC21F56E3EB33D536B75CBC09673CFAF9A8A21BDF` |
-| **macOS Apple Silicon Wheel (`cp312-abi3`)** | `bitchat-0.3.3-cp312-abi3-macosx_11_0_arm64.whl` | `929.78 KB` | `6259AF88170F981D5D6C1F3395E976B24DF6FB85BC71628251A0BF173B4CBEE4` |
-| **Source Archive (`sdist`)** | `bitchat-0.3.3.tar.gz` | `317.01 KB` | `8B96CAFB08564C20ED76C66F8FB2EF97DA00BC99005055105602706ED55F50D6` |
-| **WinGet Manifest** | `Java-Mx.BitChat.yaml` | `1.63 KB` | `C440175BC3612E687A0FFBD1FEE4F6E14BE7C63AF79CC7EFADE285D136C235C4` |
+| Platform / Format | Asset Filename | SHA-256 Checksum |
+|---|---|---|
+| **Windows x64 Installer** | `BitChat-0.3.4-windows-x64.exe` | `457CB35A9D480B5D0E37135F224B0A65A9825B3C84ADAE6420E03E8907F3F43C` |
+| **Linux Debian/Ubuntu (`amd64`)** | `bitchat_0.3.4_amd64.deb` | `42D60D72F6DD7FA78D2A2056388A716054B00A25EDDE451E9A848F5E6E0358F8` |
+| **Linux AppImage (`x86_64`)** | `BitChat-0.3.4-x86_64.AppImage` | `04F0D73BAA3D9063BD72C4C510CBDFD2B041E16B3EA5174411346920B35457E8` |
+| **Windows Wheel (`cp312-abi3`)** | `bitchat-0.3.4-cp312-abi3-win_amd64.whl` | `B5F7DB74CF31F39260106C3FB6FC66F5E090AC9BACB1349B8E1D2849ACF7C5D0` |
+| **Linux Wheel (`cp312-abi3`)** | `bitchat-0.3.4-cp312-abi3-linux_x86_64.whl` | `82E238D949B6103FA36D29B07FAB4FE748014954D9A56DAB284E202672265A2B` |
+| **Source Archive (`sdist`)** | `bitchat-0.3.4.tar.gz` | `3743DD4F3EF00543C2D759B8B33BDE8010A2DA6B513B2B59ACFB50D8B6969067` |
 
 ---
 
 ## Checksum & Signature Verification
 
-After downloading `BitChat-0.3.3-windows-x64.exe`, verify its integrity in PowerShell before running Setup:
+After downloading `BitChat-0.3.4-windows-x64.exe`, verify its integrity in PowerShell before running Setup:
 
 ```powershell
 # 1. Verify SHA-256 Checksum
-Get-FileHash .\BitChat-0.3.3-windows-x64.exe -Algorithm SHA256
-# Expected: BB0609FCE1B3A68A1EA358024FE501093D330CC092D1BD562EAC5FF124ECCEEC
+Get-FileHash .\BitChat-0.3.4-windows-x64.exe -Algorithm SHA256
+# Expected: 457CB35A9D480B5D0E37135F224B0A65A9825B3C84ADAE6420E03E8907F3F43C
 
 # 2. Inspect Authenticode Signature
-Get-AuthenticodeSignature .\BitChat-0.3.3-windows-x64.exe | Format-List *
+Get-AuthenticodeSignature .\BitChat-0.3.4-windows-x64.exe | Format-List *
 ```
 
 ---
@@ -79,8 +77,8 @@ Get-AuthenticodeSignature .\BitChat-0.3.3-windows-x64.exe | Format-List *
 ## Installation, Startup, Upgrade & Uninstallation
 
 ### Interactive Setup Wizard
-Run `BitChat-0.3.3-windows-x64.exe` to step through the 7-screen setup wizard:
-1. **Welcome** — BitChat branding, version `0.3.3`, and publisher (`Java-Mx`).
+Run `BitChat-0.3.4-windows-x64.exe` to step through the 7-screen setup wizard:
+1. **Welcome** — BitChat branding, version `0.3.4`, and publisher (`Java-Mx`).
 2. **Terms of Use** — Scrollable Terms of Use with required acceptance checkbox.
 3. **Privacy Policy** — Scrollable Privacy Policy with required acknowledgment checkbox.
 4. **Installation Location** — Defaults to `%LOCALAPPDATA%\Programs\BitChat` with permission, disk-space, and conflict validation.
@@ -89,9 +87,6 @@ Run `BitChat-0.3.3-windows-x64.exe` to step through the 7-screen setup wizard:
 7. **Completion** — Summary of installed version, path, `PATH` status, startup configuration, and immediate launch option.
 
 ### Command-Line & WinGet Usage
-
-> **WinGet Status (`Java-Mx.BitChat` / moniker `bitchat-rustpy`):** The `v0.3.3` manifest update has been submitted upstream in [microsoft/winget-pkgs#483934](https://github.com/microsoft/winget-pkgs/pull/483934) (preserving Inno Setup AppId `{B17CHA70-B1EC-4E87-99B7-4DA78D0B7001}` for in-place `0.3.1 → 0.3.3` upgrades) and is **pending Microsoft validation & merge**. Until `#483934` merges and propagates, `winget` serves `0.3.1` or you can install `v0.3.3` directly from the `.exe` installer above.
-
 ```powershell
 # Launch interactive TUI
 bitchat --tui

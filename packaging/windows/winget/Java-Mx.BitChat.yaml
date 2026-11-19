@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.28.0.schema.json
 
 PackageIdentifier: Java-Mx.BitChat
-PackageVersion: 0.3.3
+PackageVersion: 0.3.4
 PackageLocale: en-US
 Publisher: Java-Mx
 PublisherUrl: https://github.com/Java-Mx
@@ -30,13 +30,13 @@ Tags:
   - rust
   - terminal
   - tui
-ReleaseNotesUrl: https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v0.3.3
+ReleaseNotesUrl: https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v0.3.4
 Installers:
   - Architecture: x64
     InstallerType: inno
     Scope: user
-    InstallerUrl: https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.3/BitChat-0.3.3-windows-x64.exe
-    InstallerSha256: BB0609FCE1B3A68A1EA358024FE501093D330CC092D1BD562EAC5FF124ECCEEC
+    InstallerUrl: https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.4/BitChat-0.3.4-windows-x64.exe
+    InstallerSha256: 457CB35A9D480B5D0E37135F224B0A65A9825B3C84ADAE6420E03E8907F3F43C
     UpgradeBehavior: install
 ManifestType: singleton
 ManifestVersion: 1.28.0

@@ -10,8 +10,8 @@ Security fixes are applied to the latest release on the `main` branch. Earlier p
 
 | Version | Supported | Status |
 | :--- | :--- | :--- |
-| **`0.3.3` (`main`)** | ✅ Yes | Current release (Hybrid Python + Rust `bitchat._bitchat_core` — Authoritative Rust Noise XX & Protocol Engine) |
-| `< 0.3.3` | ❌ No | Upgrade to `0.3.3` |
+| **`0.3.4` (`main`)** | ✅ Yes | Current release (Hybrid Python + Rust `bitchat._bitchat_core` — Authoritative Rust Noise XX & Protocol Engine) |
+| `< 0.3.4` | ❌ No | Upgrade to `0.3.4` |
 
 ---
 
@@ -47,7 +47,7 @@ We ask researchers to act in good faith, avoid disrupting other users' devices o
 
 ## 3. Audit Status
 
-> **Important Notice:** BitChat `v0.3.3` has **not** undergone an independent third-party cryptographic or security audit. While the codebase uses standard cryptographic primitives and automated test suites, it should not be relied upon for life-safety, critical infrastructure, or high-threat adversarial operations.
+> **Important Notice:** BitChat `v0.3.4` has **not** undergone an independent third-party cryptographic or security audit. While the codebase uses standard cryptographic primitives and automated test suites, it should not be relied upon for life-safety, critical infrastructure, or high-threat adversarial operations.
 
 ---
 
@@ -76,7 +76,7 @@ We ask researchers to act in good faith, avoid disrupting other users' devices o
 
 To help users and auditors evaluate BitChat accurately, the table below distinguishes what is implemented and tested today from known limitations, unverified assumptions, and planned future work:
 
-### 5.1 Implemented Protections (`v0.3.3`)
+### 5.1 Implemented Protections (`v0.3.4`)
 
 - **Authoritative Native Rust Noise XX & Cryptographic Engine:** Direct peer sessions execute `Noise_XX_25519_ChaChaPoly_SHA256` inside `rust/bitchat-core` (`NativeNoiseSession`, `NativeHandshakeStateMachine`, `NativeNoiseCipherState`) with `zeroize::ZeroizeOnDrop` on private keys, chaining keys, and session cipher states, and no raw session key copy held eagerly in Python.
 - **Authenticated Encryption, Strict Replay Protection & Nonce Exhaustion Guard:** Established Noise sessions encrypt payloads with `ChaCha20-Poly1305` using 4-byte little-endian counter prefixes, enforce a 1,024-entry sliding replay window (including nonce `0` with no replay exception), never advance the replay window on failed AEAD decryption, and fail closed before `u32::MAX` nonce overflow. Channel/legacy symmetric encryption uses `AES-256-GCM` with 96-bit OS CSPRNG nonces.
@@ -116,7 +116,7 @@ To help users and auditors evaluate BitChat accurately, the table below distingu
 
 As part of the multi-stage Rust migration roadmap (see [`docs/ROADMAP.md`](docs/ROADMAP.md)):
 
-- **Stage 2 & Phase 2.2 (Completed in `v0.3.2`–`v0.3.3`):** `X25519`, `Ed25519`, `ChaCha20-Poly1305`, `AES-256-GCM`, `HKDF-SHA256`, `PBKDF2-HMAC-SHA256`, `Noise_XX` sessions (`NativeNoiseSession`), and single-FFI `NativeProtocolEngine` / `NativePeerStateEngine` run natively in Rust (`rust/bitchat-core`) with `zeroize::ZeroizeOnDrop`.
+- **Stage 2 & Phase 2.2 (Completed in `v0.3.2`–`v0.3.4`):** `X25519`, `Ed25519`, `ChaCha20-Poly1305`, `AES-256-GCM`, `HKDF-SHA256`, `PBKDF2-HMAC-SHA256`, `Noise_XX` sessions (`NativeNoiseSession`), and single-FFI `NativeProtocolEngine` / `NativePeerStateEngine` run natively in Rust (`rust/bitchat-core`) with `zeroize::ZeroizeOnDrop`.
 - **Stage 3–6 (In Progress / Planned):** Complete native Rust async transport I/O (LAN/BLE) and native session coordinator / local storage so private keys never cross the Python boundary.
 - **Future Hardening (Planned):** Optional passphrase-derived encryption at rest (`Argon2id` / `PBKDF2`) or OS keychain integration for `identity.json`.
 

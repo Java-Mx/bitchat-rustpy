@@ -1,6 +1,6 @@
-# BitChat Protocol Overview (`v0.3.3`)
+# BitChat Protocol Overview (`v0.3.4`)
 
-This document provides a technical overview of the BitChat binary wire protocol (Version 1), defining its packet flow, constants, and the actual hybrid Rust (`rust/bitchat-core`) + Python (`src/bitchat/`) implementation structure in `v0.3.3`.
+This document provides a technical overview of the BitChat binary wire protocol (Version 1), defining its packet flow, constants, and the actual hybrid Rust (`rust/bitchat-core`) + Python (`src/bitchat/`) implementation structure in `v0.3.4`.
 
 ## Key Protocol Constants
 
@@ -49,7 +49,7 @@ flowchart TD
 4. **Session Coordination & Cryptography (`src/bitchat/app/session_coordinator.py` & `src/bitchat/crypto/`)**:
    - Processes `Noise_XX_25519_ChaChaPoly_SHA256` handshake messages (`0x10`, `0x11`), verifies post-handshake `peer_id == SHA-256(x25519_pub)[:8]` binding and TOFU contact fingerprints, and decrypts `NoiseEncrypted` (`0x12`) transport frames.
 
-## Actual Module Architecture Mapping (`v0.3.3`)
+## Actual Module Architecture Mapping (`v0.3.4`)
 
 | Subsystem | Rust Core (`rust/bitchat-core/src/`) | Python Module (`src/bitchat/`) | Responsibility |
 |---|---|---|---|

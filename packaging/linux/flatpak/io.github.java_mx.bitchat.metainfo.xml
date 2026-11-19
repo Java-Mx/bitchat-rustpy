@@ -28,6 +28,11 @@
     <binary>bitchat</binary>
   </provides>
   <releases>
+    <release version="0.3.4" date="2026-11-19">
+      <description>
+        <p>Phase 3 release: Native Rust BLE transport architecture (Windows WinRT, Linux BlueZ zbus, macOS CoreBluetooth probe), decoupled Windows GATT provider and companion advertisement lifecycle, bitchat-tui binary DM payload interoperability, live Bluetooth Settings diagnostics with canonical UUIDs, and mouse-click navigation jitter elimination.</p>
+      </description>
+    </release>
     <release version="0.3.3" date="2026-11-19">
       <description>
         <p>Phase 2.2 release: Authoritative Rust Noise XX session integration, single-crossing NativeProtocolEngine, Stage 3 NativePeerStateEngine with collision-safe legacy bitchat-tui peer-ID compatibility, nonce exhaustion fail-closed protection, single-pass MeshRouter/StoreAndForwardQueue, NativeIpRateLimiter, and MTU-aware BLE chunking.</p>

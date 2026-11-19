@@ -3,13 +3,13 @@ BITCHAT PRIVACY POLICY
 
 DRAFT — LEGAL REVIEW REQUIRED:
 This document is a technical privacy disclosure draft prepared for the open-source
-BitChat project (v0.3.3). It describes the actual data-handling behavior of the
+BitChat project (v0.3.4). It describes the actual data-handling behavior of the
 software as implemented in the repository and must be reviewed by the project
 publisher or qualified legal counsel before any commercial, enterprise, or
 regulated deployment.
 
 Effective Date: November 19, 2026
-Applicable Release: BitChat v0.3.3
+Applicable Release: BitChat v0.3.4
 Repository: https://github.com/Java-Mx/bitchat-rustpy
 
 
