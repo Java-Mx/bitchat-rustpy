@@ -126,8 +126,17 @@ class BLEScanner:
             for s_uuid, s_payload in svc_data.items():
                 if str(s_uuid).lower().replace("-", "") == norm_target:
                     is_bitchat = True
-                    if len(s_payload) >= 6:
-                        extracted_peer_id = bytes(s_payload[:8]).hex()
+                    raw_sd = bytes(s_payload)
+                    if HAS_NATIVE_CORE and hasattr(
+                        _core, "extract_ble_service_data_peer_id"
+                    ):
+                        extracted_peer_id = _core.extract_ble_service_data_peer_id(
+                            raw_sd
+                        )
+                    elif len(raw_sd) >= 8:
+                        candidate = raw_sd[:8]
+                        if candidate not in (b"\x00" * 8, b"\xff" * 8):
+                            extracted_peer_id = candidate.hex()
                     break
 
         # 3. Match BitChat manufacturer signature in manufacturer_data

@@ -63,15 +63,17 @@ PERIODIC_PRUNE_INTERVAL_SECONDS: float = 30.0
 
 
 def _decode_chat_payload(payload_bytes: bytes) -> str:
-    """Decode chat payload from bytes, handling raw UTF-8 or inner type prefix."""
+    """Decode chat payload via Rust core (UTF-8, [0x04]+UTF-8, bitchat-tui binary)."""
+    if HAS_NATIVE_CORE and hasattr(_core, "decode_chat_payload_raw"):
+        return str(_core.decode_chat_payload_raw(payload_bytes))
+    if len(payload_bytes) > 1 and payload_bytes[0] == MessageType.Message:
+        try:
+            return payload_bytes[1:].decode("utf-8")
+        except UnicodeDecodeError:
+            pass
     try:
         return payload_bytes.decode("utf-8")
     except UnicodeDecodeError:
-        if len(payload_bytes) > 1 and payload_bytes[0] == MessageType.Message:
-            try:
-                return payload_bytes[1:].decode("utf-8")
-            except UnicodeDecodeError:
-                pass
         return payload_bytes.decode("utf-8", errors="replace")
 
 

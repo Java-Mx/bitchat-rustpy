@@ -229,12 +229,22 @@ async def test_windows_backend_initialization_failure_cleans_up(
 async def test_windows_publisher_failure_releases_provider_and_handlers(
     windows: FakeWinRT,
 ) -> None:
+    """Phase 3 decoupled lifecycle: companion publisher abort keeps GATT provider active."""
     windows.publisher_status = STATUS_ABORTED
     server = BLEServer()
 
-    with pytest.raises(BLEError, match="discovery advertisement failed"):
-        await server.start()
+    await server.start()
 
+    assert server.is_advertising is True
+    assert windows.advertising_providers == 1
+    assert windows.running_publishers == 0
+    assert windows.active_handlers > 0
+    telem = server.get_telemetry()
+    assert telem["has_provider"] is True
+    assert telem["has_publisher"] is False
+    assert "GATT service remains active" in telem["discovery_advertisement_status"]
+
+    await server.stop()
     assert server.is_advertising is False
     assert windows.advertising_providers == 0
     assert windows.running_publishers == 0

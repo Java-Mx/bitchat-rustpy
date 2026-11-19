@@ -80,6 +80,11 @@ fn _bitchat_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<noise::NativeHandshakeStateMachine>()?;
 
     // Cohesive Native Protocol Engine & Peer State Engine (Phase 2.2 / Stage 3)
+    m.add_function(wrap_pyfunction!(engine::decode_chat_payload_raw, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        engine::encode_bitchat_message_payload_raw,
+        m
+    )?)?;
     m.add_class::<engine::NativePeerStateEngine>()?;
     m.add_class::<engine::NativeInboundResult>()?;
     m.add_class::<engine::NativeProtocolEngine>()?;
@@ -105,12 +110,20 @@ fn _bitchat_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(lan::tokio_udp_broadcast_beacon, m)?)?;
     m.add_class::<lan::NativeIpRateLimiter>()?;
 
-    // BLE advertisement codec, MTU sizing, and GATT connection engine (Stage 5)
+    // BLE advertisement codec, MTU sizing, GATT connection engine & native Rust BLE transport (Phase 3)
     m.add_function(wrap_pyfunction!(ble::encode_ble_manufacturer_payload, m)?)?;
     m.add_function(wrap_pyfunction!(decode_ble_adv, m)?)?;
     m.add_function(wrap_pyfunction!(ble::decode_ble_manufacturer_payload, m)?)?;
+    m.add_function(wrap_pyfunction!(ble::extract_ble_service_data_peer_id, m)?)?;
     m.add_function(wrap_pyfunction!(ble::compute_ble_write_chunk_size, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        ble::validate_ble_gatt_characteristic_raw,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(ble::bitchat_ble_uuids_raw, m)?)?;
+    m.add_function(wrap_pyfunction!(ble::probe_native_ble_adapter_raw, m)?)?;
     m.add_class::<ble::NativeBleConnectionEngine>()?;
+    m.add_class::<ble::NativeBleTransportManager>()?;
 
     Ok(())
 }

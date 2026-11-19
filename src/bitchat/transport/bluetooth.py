@@ -5,13 +5,19 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import time
 from typing import TYPE_CHECKING, Any
 
+from bitchat._native import HAS_NATIVE_CORE, _core
 from bitchat.ble.models import BLEState
 from bitchat.exceptions import FragmentationError, PacketDecodingError
 from bitchat.logging import log_transport_diagnostic
 from bitchat.platform.detection import PlatformKind, detect_platform
-from bitchat.protocol.constants import MessageType
+from bitchat.protocol.constants import (
+    BITCHAT_CHARACTERISTIC_UUID,
+    BITCHAT_SERVICE_UUID,
+    MessageType,
+)
 from bitchat.protocol.decoder import decode_packet
 from bitchat.protocol.encoder import encode_packet
 from bitchat.protocol.fragmentation import fragment_encoded_packet, should_fragment
@@ -91,6 +97,16 @@ class BluetoothTransport(BaseTransport):
         self.server_reassembler = FragmentReassembler()
         self._server_clients: set[str] = set()
         self.offline_mode: bool = False
+        self._last_refresh_timestamp: float = 0.0
+        self._native_ble: Any | None = (
+            _core.NativeBleTransportManager("", "")
+            if (
+                HAS_NATIVE_CORE
+                and hasattr(_core, "NativeBleTransportManager")
+                and not self._uses_injected_test_backend()
+            )
+            else None
+        )
 
         # Wire up internal callbacks
         if self.ble_manager is not None:
@@ -794,6 +810,34 @@ class BluetoothTransport(BaseTransport):
             self.ble_server.update_identity(peer_id_hex, nickname)
         if self.ble_manager:
             self.ble_manager.update_sender_id(bytes.fromhex(peer_id_hex))
+        if self._native_ble is not None:
+            self._native_ble.set_identity(peer_id_hex, nickname)
+
+    def record_diagnostic_step(
+        self, stage: str, peer: str, status: str, detail: str
+    ) -> None:
+        """Record a secret-redacted BLE-to-Noise progression trace step in Rust."""
+        if self._native_ble is not None:
+            with contextlib.suppress(Exception):
+                self._native_ble.record_diagnostic(stage, peer, status, detail)
+
+    async def refresh_diagnostics(self) -> dict[str, Any]:
+        """Refresh live Bluetooth adapter & transport diagnostics asynchronously."""
+        if self.ble_manager is not None and hasattr(
+            self.ble_manager, "adapter_manager"
+        ):
+            with contextlib.suppress(Exception):
+                info = await self.ble_manager.adapter_manager.check_adapter()
+                self._central_supported = bool(info.is_central_supported)
+                self._peripheral_supported = bool(info.is_peripheral_supported)
+                self._advertisement_offload_supported = bool(
+                    info.is_advertisement_offload_supported
+                )
+        elif self._native_ble is not None:
+            with contextlib.suppress(Exception):
+                await asyncio.to_thread(self._native_ble.probe_adapter)
+        self._last_refresh_timestamp = time.time()
+        return self.get_telemetry()
 
     def resolve_peer_id_to_address(self, target: str) -> str | None:
         if self.ble_manager:
@@ -806,22 +850,41 @@ class BluetoothTransport(BaseTransport):
                 "transport": "bluetooth",
                 "state": self._state.value,
                 "adapter_available": False,
+                "adapter_name": "None Detected",
+                "adapter_address": "Unavailable",
+                "adapter_id": "Unavailable",
                 "adapter_state": "Unavailable",
+                "radio_state": "unavailable",
                 "adapter_initialization": "Not checked",
+                "backend_name": (
+                    self._native_ble.backend_name()
+                    if self._native_ble is not None
+                    else "Unavailable"
+                ),
+                "rust_ble_active": self._native_ble is not None,
                 "central_supported": self._central_supported,
                 "peripheral_supported": self._peripheral_supported,
+                "central_status": "Unavailable",
+                "peripheral_status": "Unavailable",
                 "advertisement_offload_supported": (
                     self._advertisement_offload_supported
                 ),
                 "advertising_active": False,
                 "peripheral_error": self._peripheral_error_message,
                 "gatt_server_status": "Stopped",
+                "discovery_advertisement_status": "Inactive",
                 "scanner_status": "Stopped",
+                "service_uuid": BITCHAT_SERVICE_UUID.upper(),
+                "characteristic_uuid": BITCHAT_CHARACTERISTIC_UUID.upper(),
                 "discovered_peers_count": 0,
                 "connected_peers_count": 0,
+                "connected_central_count": 0,
+                "connected_server_clients_count": 0,
+                "active_mtu": 185,
                 "connected_peers": [],
                 "discovered_peers": {},
                 "error_message": self._error_message,
+                "last_refresh_timestamp": self._last_refresh_timestamp,
             }
 
         adapter = self.ble_manager.adapter_manager.current_info
@@ -830,18 +893,72 @@ class BluetoothTransport(BaseTransport):
         )
         server_telem = self.ble_server.get_telemetry()
         platform = detect_platform()
-        backend_name = {
-            PlatformKind.WINDOWS: "Windows WinRT GATT",
-            PlatformKind.LINUX: "Linux BlueZ (D-Bus)",
-            PlatformKind.OTHER: "Bleak central only",
-        }[platform]
         if self.ble_server._custom_backend is not None:
             backend_name = type(self.ble_server._custom_backend).__name__
+        elif getattr(adapter, "backend_name", ""):
+            backend_name = adapter.backend_name
+        elif self._native_ble is not None:
+            backend_name = str(self._native_ble.backend_name())
+        else:
+            backend_name = {
+                PlatformKind.WINDOWS: "Windows WinRT GATT",
+                PlatformKind.LINUX: "Linux BlueZ (D-Bus)",
+                PlatformKind.OTHER: "Bleak central only",
+            }[platform]
+
+        scanner_active = bool(self.ble_manager.scanner.is_scanning)
+        if scanner_active:
+            central_status = "Active (Scanning)"
+        elif self._central_supported:
+            central_status = "Idle (Supported)" if adapter.is_enabled else "Radio Off"
+        elif adapter_checked:
+            central_status = "Unsupported"
+        else:
+            central_status = "Not checked"
+
+        if self.ble_server.is_advertising:
+            peripheral_status = "Active (GATT Ready)"
+        elif not self._peripheral_supported and adapter_checked:
+            peripheral_status = "Unsupported"
+        elif self._peripheral_error_message:
+            peripheral_status = "Failed (Central-only fallback)"
+        elif self._peripheral_supported:
+            peripheral_status = (
+                "Idle (Supported)" if adapter.is_enabled else "Radio Off"
+            )
+        else:
+            peripheral_status = "Not checked"
+
+        gatt_status_detail = server_telem.get("gatt_server_status")
+        gatt_status = self._gatt_server_status(server_telem)
+        if gatt_status == "Stopped" and gatt_status_detail not in (None, "", "Stopped"):
+            gatt_status = str(gatt_status_detail)
+
+        disc_adv_status = str(
+            server_telem.get("discovery_advertisement_status")
+            or (
+                "Active" if server_telem.get("advertisement_registered") else "Inactive"
+            )
+        )
+
+        central_conns = list(self.ble_manager.connected_peers)
+        active_mtu = 185
+        connections_map = getattr(self.ble_manager, "_connections", None)
+        if isinstance(connections_map, dict) and connections_map:
+            mtus = [
+                int(getattr(conn, "mtu", 185) or 185)
+                for conn in connections_map.values()
+            ]
+            if mtus:
+                active_mtu = min(mtus)
+
         return {
             "transport": "bluetooth",
             "state": self._state.value,
             "adapter_available": adapter.is_available,
-            "adapter_name": adapter.name or "Unknown",
+            "adapter_name": adapter.name
+            or ("None Detected" if adapter_checked else "Not checked"),
+            "adapter_address": getattr(adapter, "address", "") or "Unavailable",
             "adapter_id": adapter.device_id or "Unavailable",
             "adapter_initialization": (
                 "Initialized"
@@ -851,6 +968,7 @@ class BluetoothTransport(BaseTransport):
                 else "Not checked"
             ),
             "backend_name": backend_name,
+            "rust_ble_active": self._native_ble is not None,
             "platform": platform.value,
             "permission_status": "Not exposed by this platform backend",
             "adapter_state": "On"
@@ -865,21 +983,28 @@ class BluetoothTransport(BaseTransport):
             "radio_state": adapter.radio_state,
             "central_supported": self._central_supported,
             "peripheral_supported": self._peripheral_supported,
+            "central_status": central_status,
+            "peripheral_status": peripheral_status,
             "advertisement_offload_supported": (self._advertisement_offload_supported),
             "advertising_active": self.ble_server.is_advertising,
             "peripheral_error": self._peripheral_error_message,
-            "gatt_server_status": self._gatt_server_status(server_telem),
-            "scanner_status": "Active"
-            if self.ble_manager.scanner.is_scanning
-            else "Stopped",
+            "gatt_server_status": gatt_status,
+            "discovery_advertisement_status": disc_adv_status,
+            "scanner_status": "Active" if scanner_active else "Stopped",
+            "service_uuid": BITCHAT_SERVICE_UUID.upper(),
+            "characteristic_uuid": BITCHAT_CHARACTERISTIC_UUID.upper(),
             "scan_started_at": self.ble_manager.scanner.scan_started_at,
             "scan_duration_seconds": self.ble_manager.scanner.scan_duration_seconds,
             "last_successful_scan_at": self.ble_manager.scanner.last_successful_scan_at,
             "gatt": server_telem,
             "discovered_peers_count": len(self.discovered_peers),
             "connected_peers_count": len(self.connected_peers),
+            "connected_central_count": len(central_conns),
+            "connected_server_clients_count": len(self._server_clients),
+            "active_mtu": active_mtu,
             "connected_peers": self.connected_peers,
             "discovered_peers": self.discovered_peers,
+            "diagnostic_detail": getattr(adapter, "diagnostic_detail", "") or "",
             "error_message": self._error_message,
             "failed_stage": self._failed_stage or server_telem.get("failed_stage"),
             "error_code": self._error_code
@@ -887,6 +1012,7 @@ class BluetoothTransport(BaseTransport):
             else server_telem.get("error_code"),
             "hresult": self._hresult or server_telem.get("hresult"),
             "error_source": self._error_source or server_telem.get("error_source"),
+            "last_refresh_timestamp": self._last_refresh_timestamp,
         }
 
     def _gatt_server_status(self, telemetry: dict[str, Any]) -> str:

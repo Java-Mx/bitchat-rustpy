@@ -5,9 +5,12 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
+import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from bitchat._native import HAS_NATIVE_CORE, _core
 from bitchat.platform.detection import (
     PlatformKind,
     detect_platform,
@@ -32,6 +35,10 @@ class AdapterInfo:
     is_advertisement_offload_supported: bool = False
     device_id: str = ""
     name: str = ""
+    address: str = ""
+    backend_name: str = ""
+    max_advertisement_data_length: int = 0
+    diagnostic_detail: str = ""
 
     @property
     def is_enabled(self) -> bool:
@@ -73,7 +80,7 @@ class BLEAdapterManager:
         kind = detect_platform()
         backend = probe_ble_backend(kind)
         if not backend.available:
-            # A missing Python backend is not a Bluetooth adapter problem and must
+            # A missing platform backend is not a Bluetooth adapter problem and must
             # never be reported as available hardware.
             info = AdapterInfo(
                 is_available=False,
@@ -89,6 +96,44 @@ class BLEAdapterManager:
 
         self._current_info = info
         return info
+
+    @staticmethod
+    def _has_fake_winrt_module() -> bool:
+        """Return True when unit tests injected an in-memory fake winrt module."""
+        mod = sys.modules.get("winrt.windows.devices.bluetooth")
+        return mod is not None and not getattr(mod, "__file__", None)
+
+    async def _check_native_rust_adapter(self) -> AdapterInfo | None:
+        """Query the host Bluetooth adapter via Rust WinRT / BlueZ / macOS backend."""
+        try:
+            raw: dict[str, Any] = await asyncio.to_thread(
+                _core.probe_native_ble_adapter_raw
+            )
+        except Exception as e:
+            logger.debug("Native Rust BLE adapter probe failed: %s", e)
+            return None
+
+        radio_raw = str(raw.get("radio_state") or "unavailable").strip().lower()
+        if radio_raw not in ("on", "off", "disabled", "unknown", "unavailable"):
+            radio_raw = "unknown"
+
+        return AdapterInfo(
+            is_available=bool(raw.get("adapter_present", False)),
+            radio_state=radio_raw,
+            is_peripheral_supported=bool(raw.get("peripheral_supported", False)),
+            is_central_supported=bool(raw.get("central_supported", False)),
+            is_advertisement_offload_supported=bool(
+                raw.get("advertisement_offload_supported", False)
+            ),
+            device_id=str(raw.get("device_id") or ""),
+            name=str(raw.get("adapter_name") or "Unknown"),
+            address=str(raw.get("adapter_address") or ""),
+            backend_name=str(raw.get("platform_backend") or ""),
+            max_advertisement_data_length=int(
+                raw.get("max_advertisement_data_length") or 0
+            ),
+            diagnostic_detail=str(raw.get("diagnostic_detail") or ""),
+        )
 
     async def start_monitoring(
         self,
@@ -138,6 +183,17 @@ class BLEAdapterManager:
 
     async def _check_windows_adapter(self) -> AdapterInfo:
         """Query Windows WinRT for default BluetoothAdapter and radio state."""
+        if (
+            HAS_NATIVE_CORE
+            and hasattr(_core, "probe_native_ble_adapter_raw")
+            and os.name == "nt"
+            and sys.platform == "win32"
+            and not self._has_fake_winrt_module()
+        ):
+            native_info = await self._check_native_rust_adapter()
+            if native_info is not None:
+                return native_info
+
         try:
             from winrt.windows.devices.bluetooth import (  # pyright: ignore[reportMissingImports]
                 BluetoothAdapter,
@@ -206,6 +262,18 @@ class BLEAdapterManager:
     async def _check_linux_adapter(self) -> AdapterInfo:
         """Query Linux BlueZ and D-Bus interfaces for real hardware capabilities."""
         from bitchat.platform.capabilities import detect_bluetooth_info
+
+        if (
+            HAS_NATIVE_CORE
+            and hasattr(_core, "probe_native_ble_adapter_raw")
+            and os.name == "posix"
+            and sys.platform.startswith("linux")
+            and getattr(detect_bluetooth_info, "__module__", "")
+            == "bitchat.platform.capabilities"
+        ):
+            native_info = await self._check_native_rust_adapter()
+            if native_info is not None and native_info.is_available:
+                return native_info
 
         try:
             bt_cap = await detect_bluetooth_info()

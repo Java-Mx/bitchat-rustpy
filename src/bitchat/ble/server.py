@@ -105,6 +105,9 @@ class BLEServer:
         self._linux_backend: Any | None = None
 
         self._is_advertising: bool = False
+        self._gatt_server_status: str = "Stopped"
+        self._discovery_advertisement_status: str = "Inactive"
+        self._companion_advertising_active: bool = False
         self._last_error: str | None = None
         self._failed_stage: str | None = None
         self._error_code: int | None = None
@@ -174,6 +177,9 @@ class BLEServer:
             "has_provider": has_provider,
             "has_publisher": has_publisher,
             "advertisement_registered": advertisement_registered,
+            "gatt_server_status": self._gatt_server_status,
+            "discovery_advertisement_status": self._discovery_advertisement_status,
+            "companion_advertising_active": self._companion_advertising_active,
             "dbus_available": bool(getattr(linux, "_bus", None)) if linux else None,
             "adapter_path": getattr(linux, "_adapter_path", None),
             "last_error": self._last_error,
@@ -406,10 +412,20 @@ class BLEServer:
                     self._last_error,
                 )
                 self._is_advertising = False
+                self._gatt_server_status = (
+                    f"Failed ({status_name} / status {status_val})"
+                )
+                self._discovery_advertisement_status = "Inactive"
+                self._companion_advertising_active = False
                 self._cleanup_windows_resources()
                 return
 
-            # Broadcast companion manufacturer advertisement so nodes detect BitChat
+            self._gatt_server_status = "Active (GATT Service Advertising)"
+            self._is_advertising = True
+
+            # Decoupled OPTIONAL companion manufacturer advertisement so nodes can
+            # discover BitChat quickly. Failure here MUST NOT tear down the already
+            # active GattServiceProvider or GattLocalCharacteristic!
             try:
                 publisher = adv.BluetoothLEAdvertisementPublisher()
                 m = adv.BluetoothLEManufacturerData()
@@ -434,33 +450,45 @@ class BLEServer:
                     failed_statuses=(3, 4, 5),
                     advertisement_type="BitChat discovery",
                 )
+                self._companion_advertising_active = True
+                self._discovery_advertisement_status = (
+                    "Active (ManufacturerData + ServiceUUID)"
+                )
                 logger.info(
                     "WinRT BLE advertisement publisher started for BitChat (%s)",
                     self.service_uuid,
                 )
             except Exception as pub_err:
+                # Clean up ONLY the failed companion publisher; preserve GATT service!
+                if self._publisher is not None:
+                    with contextlib.suppress(Exception):
+                        self._publisher.stop()
+                    self._publisher = None
+                self._companion_advertising_active = False
                 err_code, hresult = _extract_winrt_error_info(pub_err)
-                self._failed_stage = "discovery_advertisement_start"
-                self._error_code = err_code
-                self._hresult = hresult
-                self._error_source = "winrt.BluetoothLEAdvertisementPublisher"
-                self._last_error = (
-                    f"WinRT BitChat discovery advertisement failed: {pub_err}"
+                self._discovery_advertisement_status = (
+                    f"Failed ({pub_err} — GATT service remains active)"
                 )
                 log_transport_diagnostic(
                     operation="ble_server_start",
                     stage="discovery_advertisement_start",
-                    result="FAILED",
+                    result="DEGRADED",
                     requested_transport="bluetooth",
                     error_code=err_code,
                     hresult=hresult,
                     source="winrt.BluetoothLEAdvertisementPublisher",
-                    cleanup_result="windows_resources_released",
-                    details=self._last_error,
+                    cleanup_result="companion_publisher_only_released",
+                    details=(
+                        f"Companion manufacturer advertisement failed ({pub_err}); "
+                        "GATT service provider remains active"
+                    ),
                 )
-                raise BLEError(self._last_error) from pub_err
+                logger.warning(
+                    "WinRT companion manufacturer advertisement failed (%s); "
+                    "keeping GATT service provider active",
+                    pub_err,
+                )
 
-            self._is_advertising = True
             log_transport_diagnostic(
                 operation="ble_server_start",
                 stage="server_active",

@@ -57,18 +57,205 @@ fn now_millis_u64() -> u64 {
         .unwrap_or(0)
 }
 
-fn decode_chat_payload_lossy(payload: &[u8]) -> String {
-    match std::str::from_utf8(payload) {
-        Ok(s) => s.to_string(),
-        Err(_) => {
-            if payload.len() > 1 && payload[0] == MSG_MESSAGE {
-                if let Ok(s) = std::str::from_utf8(&payload[1..]) {
-                    return s.to_string();
-                }
-            }
-            String::from_utf8_lossy(payload).into_owned()
+const MSG_FLAG_IS_PRIVATE: u8 = 0x02;
+const MSG_FLAG_HAS_ORIGINAL_SENDER: u8 = 0x04;
+const MSG_FLAG_HAS_RECIPIENT_NICKNAME: u8 = 0x08;
+const MSG_FLAG_HAS_SENDER_PEER_ID: u8 = 0x10;
+const MSG_FLAG_HAS_MENTIONS: u8 = 0x20;
+const MSG_FLAG_HAS_CHANNEL: u8 = 0x40;
+const MSG_FLAG_IS_ENCRYPTED: u8 = 0x80;
+/// Lower bound for plausible Unix millisecond timestamps (2000-01-01T00:00:00Z).
+const MIN_PLAUSIBLE_TIMESTAMP_MS: u64 = 946_684_800_000;
+/// Upper bound for plausible Unix millisecond timestamps (2200-01-01T00:00:00Z).
+const MAX_PLAUSIBLE_TIMESTAMP_MS: u64 = 7_258_118_400_000;
+
+/// Attempt to parse a binary `BitchatMessage` payload matching `bitchat-tui` / Swift
+/// (`src/payload_handling.rs`) and return its UTF-8 content string.
+///
+/// Requires a plausible millisecond timestamp and exact structural bounds so plain
+/// UTF-8 messages are never misidentified as binary payloads.
+pub(crate) fn try_parse_bitchat_message_content(data: &[u8]) -> Option<String> {
+    if data.len() < 13 {
+        return None;
+    }
+    let flags = data[0];
+    if (flags & MSG_FLAG_IS_ENCRYPTED) != 0 {
+        return None;
+    }
+    let ts_bytes: [u8; 8] = data[1..9].try_into().ok()?;
+    let timestamp_ms = u64::from_be_bytes(ts_bytes);
+    if !(MIN_PLAUSIBLE_TIMESTAMP_MS..=MAX_PLAUSIBLE_TIMESTAMP_MS).contains(&timestamp_ms) {
+        return None;
+    }
+    let mut offset = 9usize;
+
+    let id_len = *data.get(offset)? as usize;
+    offset += 1;
+    if offset + id_len > data.len() {
+        return None;
+    }
+    let _id = std::str::from_utf8(&data[offset..offset + id_len]).ok()?;
+    offset += id_len;
+
+    let sender_len = *data.get(offset)? as usize;
+    offset += 1;
+    if offset + sender_len > data.len() {
+        return None;
+    }
+    let _sender = std::str::from_utf8(&data[offset..offset + sender_len]).ok()?;
+    offset += sender_len;
+
+    let content_len_bytes: [u8; 2] = data.get(offset..offset + 2)?.try_into().ok()?;
+    let content_len = u16::from_be_bytes(content_len_bytes) as usize;
+    offset += 2;
+    if offset + content_len > data.len() {
+        return None;
+    }
+    let content = std::str::from_utf8(&data[offset..offset + content_len])
+        .ok()?
+        .to_string();
+    offset += content_len;
+
+    // Validate optional trailing fields match bounds cleanly.
+    let skip_len_prefixed = |off: &mut usize| -> Option<()> {
+        let field_len = *data.get(*off)? as usize;
+        *off += 1;
+        if *off + field_len > data.len() {
+            return None;
+        }
+        *off += field_len;
+        Some(())
+    };
+
+    if (flags & MSG_FLAG_HAS_ORIGINAL_SENDER) != 0 {
+        skip_len_prefixed(&mut offset)?;
+    }
+    if (flags & MSG_FLAG_HAS_RECIPIENT_NICKNAME) != 0 {
+        skip_len_prefixed(&mut offset)?;
+    }
+    if (flags & MSG_FLAG_HAS_SENDER_PEER_ID) != 0 {
+        skip_len_prefixed(&mut offset)?;
+    }
+    if (flags & MSG_FLAG_HAS_MENTIONS) != 0 {
+        let count = *data.get(offset)? as usize;
+        offset += 1;
+        for _ in 0..count {
+            skip_len_prefixed(&mut offset)?;
         }
     }
+    if (flags & MSG_FLAG_HAS_CHANNEL) != 0 {
+        skip_len_prefixed(&mut offset)?;
+    }
+
+    if offset == data.len() {
+        Some(content)
+    } else {
+        None
+    }
+}
+
+/// Encode a `bitchat-tui` / Swift compatible binary `BitchatMessage` payload.
+#[pyfunction]
+#[pyo3(signature = (sender, content, sender_peer_id, message_id="msg-1", is_private=true, channel=None, timestamp_ms=None))]
+pub fn encode_bitchat_message_payload_raw(
+    sender: &str,
+    content: &str,
+    sender_peer_id: &str,
+    message_id: &str,
+    is_private: bool,
+    channel: Option<&str>,
+    timestamp_ms: Option<u64>,
+) -> PyResult<Vec<u8>> {
+    let id_bytes = message_id.as_bytes();
+    let sender_bytes = sender.as_bytes();
+    let content_bytes = content.as_bytes();
+    let peer_bytes = sender_peer_id.as_bytes();
+    if id_bytes.len() > u8::MAX as usize
+        || sender_bytes.len() > u8::MAX as usize
+        || peer_bytes.len() > u8::MAX as usize
+        || content_bytes.len() > u16::MAX as usize
+    {
+        return Err(CoreError::invalid_packet("BitchatMessage field exceeds wire bounds").into());
+    }
+    let mut flags: u8 = MSG_FLAG_HAS_SENDER_PEER_ID;
+    if is_private {
+        flags |= MSG_FLAG_IS_PRIVATE;
+    }
+    if let Some(ch) = channel {
+        if ch.len() > u8::MAX as usize {
+            return Err(CoreError::invalid_packet("Channel name exceeds 255 bytes").into());
+        }
+        flags |= MSG_FLAG_HAS_CHANNEL;
+    }
+    let ts = timestamp_ms.unwrap_or_else(now_millis_u64);
+    let mut out = Vec::with_capacity(
+        13 + id_bytes.len() + sender_bytes.len() + content_bytes.len() + peer_bytes.len() + 16,
+    );
+    out.push(flags);
+    out.extend_from_slice(&ts.to_be_bytes());
+    out.push(id_bytes.len() as u8);
+    out.extend_from_slice(id_bytes);
+    out.push(sender_bytes.len() as u8);
+    out.extend_from_slice(sender_bytes);
+    out.extend_from_slice(&(content_bytes.len() as u16).to_be_bytes());
+    out.extend_from_slice(content_bytes);
+    out.push(peer_bytes.len() as u8);
+    out.extend_from_slice(peer_bytes);
+    if let Some(ch) = channel {
+        out.push(ch.len() as u8);
+        out.extend_from_slice(ch.as_bytes());
+    }
+    Ok(out)
+}
+
+pub(crate) fn decode_chat_payload_lossy(payload: &[u8]) -> String {
+    // 1. Nested BitchatPacket (bitchat-tui notification_handlers.rs:1454 format)
+    if payload.len() >= 21 && payload[0] == PROTOCOL_VERSION && payload[1] == MSG_MESSAGE {
+        if let Ok((_ver, msg_type, _ttl, _ts, _flags, _sender, _recip, inner_payload, _sig)) =
+            decode_packet_slice(payload)
+        {
+            if msg_type == MSG_MESSAGE {
+                if let Some(content) = try_parse_bitchat_message_content(&inner_payload) {
+                    return content;
+                }
+                if let Ok(text) = std::str::from_utf8(&inner_payload) {
+                    return text.to_string();
+                }
+            }
+        }
+    }
+
+    // 2. [0x04] || binary BitchatMessage (bitchat-tui message_handlers.rs:168 format)
+    if payload.len() > 1 && payload[0] == MSG_MESSAGE {
+        if let Some(content) = try_parse_bitchat_message_content(&payload[1..]) {
+            return content;
+        }
+    }
+
+    // 3. Bare binary BitchatMessage
+    if let Some(content) = try_parse_bitchat_message_content(payload) {
+        return content;
+    }
+
+    // 4. [0x04] || UTF-8 message prefix
+    if payload.len() > 1 && payload[0] == MSG_MESSAGE {
+        if let Ok(s) = std::str::from_utf8(&payload[1..]) {
+            return s.to_string();
+        }
+    }
+
+    // 5. Raw UTF-8 text (or lossy fallback)
+    match std::str::from_utf8(payload) {
+        Ok(s) => s.to_string(),
+        Err(_) => String::from_utf8_lossy(payload).into_owned(),
+    }
+}
+
+/// Decode a chat payload (supporting raw UTF-8, `[0x04] || UTF-8`, `[0x04] || BitchatMessage`,
+/// bare binary `BitchatMessage`, and nested `BitchatPacket(Message)`).
+#[pyfunction]
+pub fn decode_chat_payload_raw(payload: &[u8]) -> String {
+    decode_chat_payload_lossy(payload)
 }
 
 // ---------------------------------------------------------------------------
@@ -1712,5 +1899,60 @@ mod tests {
         ps.bind_authenticated_identity_internal("deadbeef00000000", &fp2, "legacy_tui", 5.0)
             .unwrap();
         assert_eq!(ps.get_trust_level("deadbeef00000000"), "authenticated");
+    }
+
+    #[test]
+    fn test_decode_bitchat_tui_dm_payload_formats() {
+        // 1. Plain UTF-8
+        assert_eq!(decode_chat_payload_lossy(b"Hello RustPy!"), "Hello RustPy!");
+
+        // 2. [0x04] || UTF-8
+        let mut prefixed_utf8 = vec![MSG_MESSAGE];
+        prefixed_utf8.extend_from_slice(b"Hello prefixed!");
+        assert_eq!(decode_chat_payload_lossy(&prefixed_utf8), "Hello prefixed!");
+
+        // 3. [0x04] || binary BitchatMessage (exact bitchat-tui message_handlers.rs format)
+        let bin_msg = encode_bitchat_message_payload_raw(
+            "alice",
+            "Secret DM from bitchat-tui",
+            "deadbeef00000000",
+            "uuid-1234",
+            true,
+            None,
+            Some(1_730_000_000_000),
+        )
+        .unwrap();
+        let mut prefixed_bin = vec![MSG_MESSAGE];
+        prefixed_bin.extend_from_slice(&bin_msg);
+        assert_eq!(
+            decode_chat_payload_lossy(&prefixed_bin),
+            "Secret DM from bitchat-tui"
+        );
+
+        // 4. Bare binary BitchatMessage
+        assert_eq!(
+            decode_chat_payload_lossy(&bin_msg),
+            "Secret DM from bitchat-tui"
+        );
+
+        // 5. Nested BitchatPacket(Message) (exact bitchat-tui notification_handlers.rs format)
+        let sender_id = [0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x00, 0x00, 0x00];
+        let nested_pkt = encode_packet_bytes(
+            i64::from(PROTOCOL_VERSION),
+            i64::from(MSG_MESSAGE),
+            7,
+            1_730_000_000_000,
+            0,
+            &sender_id,
+            None,
+            &bin_msg,
+            None,
+            false,
+        )
+        .unwrap();
+        assert_eq!(
+            decode_chat_payload_lossy(&nested_pkt),
+            "Secret DM from bitchat-tui"
+        );
     }
 }
