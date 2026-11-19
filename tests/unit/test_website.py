@@ -154,9 +154,9 @@ def test_releases_json_schema_and_checksum_consistency():
     assert win_pkg["filename"] == "BitChat-0.3.2-windows-x64.exe"
     assert (
         win_pkg["sha256"]
-        == "4FEE6B1D4464FFEFD92DBD3CD342C848FED82A29E718AB9B34FB5B6ADE5EB768"
+        == "61FB2A5E882CF6CF8D59AA6916C174CBD12C5C4DA4077A98880FC860908410B4"
     )
-    assert win_pkg["size_bytes"] == 19423125
+    assert win_pkg["size_bytes"] == 18479490
 
 
 def test_sitemap_xml_validity():

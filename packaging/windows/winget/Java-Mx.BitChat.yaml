@@ -36,7 +36,7 @@ Installers:
     InstallerType: inno
     Scope: user
     InstallerUrl: https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.2/BitChat-0.3.2-windows-x64.exe
-    InstallerSha256: 4FEE6B1D4464FFEFD92DBD3CD342C848FED82A29E718AB9B34FB5B6ADE5EB768
+    InstallerSha256: 61FB2A5E882CF6CF8D59AA6916C174CBD12C5C4DA4077A98880FC860908410B4
     UpgradeBehavior: install
 ManifestType: singleton
 ManifestVersion: 1.28.0
