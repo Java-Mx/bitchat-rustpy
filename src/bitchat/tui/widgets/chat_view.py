@@ -103,6 +103,8 @@ class ChatView(Widget):
                 if index:
                     log.write(Text(" "))
                 self._render_record(rec)
+            if log.auto_scroll and getattr(log, "_size_known", False):
+                log.scroll_end(animate=False, immediate=True, x_axis=False)
         except NoMatches:
             pass
         except Exception as e:
@@ -238,6 +240,9 @@ class ChatView(Widget):
         if len(self._message_history) > self.MAX_HISTORY:
             del self._message_history[: len(self._message_history) - self.MAX_HISTORY]
         self._render_record(record)
+        log = self.rich_log
+        if log.auto_scroll and getattr(log, "_size_known", False):
+            log.scroll_end(animate=False, immediate=True, x_axis=False)
 
     def add_chat_message(
         self,

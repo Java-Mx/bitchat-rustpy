@@ -657,6 +657,7 @@ pub struct NativeProtocolEngine {
     peer_state: NativePeerStateEngine,
     sessions: HashMap<String, NativeNoiseSession>,
     ack_tracker: NativeAckTracker,
+    last_packet_ts_ms: u64,
 }
 
 impl Drop for NativeProtocolEngine {
@@ -679,7 +680,8 @@ impl NativeProtocolEngine {
         } else {
             0
         };
-        let ts = now_millis_u64();
+        let ts = now_millis_u64().max(self.last_packet_ts_ms.saturating_add(1));
+        self.last_packet_ts_ms = ts;
         let rec_slice = recipient_id.map(|r| r.as_slice());
         self.mesh_router.dedup_record_raw(
             &self.local_peer_id,
@@ -1295,6 +1297,7 @@ impl NativeProtocolEngine {
             peer_state,
             sessions: HashMap::new(),
             ack_tracker,
+            last_packet_ts_ms: 0,
         })
     }
 
@@ -1622,7 +1625,10 @@ mod tests {
             Some("legacy_tui")
         );
 
-        // Disconnect legacy peer, then have an IMPOSTOR with a different static key claim the same legacy ID
+        // Disconnect legacy peer, then have an IMPOSTOR with a different static key claim the same legacy ID.
+        // Sleep 2ms so wall-clock millisecond timestamps cannot collide with the legitimate peer's
+        // empty MSG_HANDSHAKE_REQUEST in the deduplicator on fast Linux CI runners.
+        std::thread::sleep(std::time::Duration::from_millis(2));
         rustpy_eng.on_peer_disconnected(tui_legacy_pid, 25.0);
         let impostor_priv = [0x99u8; 32];
         let mut impostor_eng = NativeProtocolEngine::new(
