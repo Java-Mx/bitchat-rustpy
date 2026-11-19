@@ -29,7 +29,8 @@ use crate::ble::types::{
     BITCHAT_MANUFACTURER_ID, BITCHAT_SERVICE_UUID_STR, DEFAULT_BLE_MTU,
 };
 
-type ManagedObjects = HashMap<OwnedObjectPath, HashMap<String, HashMap<String, OwnedValue>>>;
+type InterfaceMap = HashMap<String, HashMap<String, OwnedValue>>;
+type ManagedObjects = HashMap<OwnedObjectPath, InterfaceMap>;
 
 static BLUEZ_OBJ_COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -85,7 +86,7 @@ pub async fn probe_linux_adapter_async() -> BleAdapterSnapshot {
         }
     };
 
-    let mut adapters: Vec<(String, &HashMap<String, HashMap<String, OwnedValue>>)> = objects
+    let mut adapters: Vec<(String, &InterfaceMap)> = objects
         .iter()
         .filter(|(_, ifaces)| ifaces.contains_key("org.bluez.Adapter1"))
         .map(|(path, ifaces)| (path.as_str().to_string(), ifaces))
