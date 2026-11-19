@@ -89,6 +89,9 @@ Run `BitChat-0.3.3-windows-x64.exe` to step through the 7-screen setup wizard:
 7. **Completion** — Summary of installed version, path, `PATH` status, startup configuration, and immediate launch option.
 
 ### Command-Line & WinGet Usage
+
+> **WinGet Status (`Java-Mx.BitChat` / moniker `bitchat-rustpy`):** The `v0.3.3` manifest update has been submitted upstream in [microsoft/winget-pkgs#483934](https://github.com/microsoft/winget-pkgs/pull/483934) (preserving Inno Setup AppId `{B17CHA70-B1EC-4E87-99B7-4DA78D0B7001}` for in-place `0.3.1 → 0.3.3` upgrades) and is **pending Microsoft validation & merge**. Until `#483934` merges and propagates, `winget` serves `0.3.1` or you can install `v0.3.3` directly from the `.exe` installer above.
+
 ```powershell
 # Launch interactive TUI
 bitchat --tui

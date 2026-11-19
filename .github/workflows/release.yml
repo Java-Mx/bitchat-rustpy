@@ -332,10 +332,92 @@ jobs:
             dist/*.flatpak.sha256
             packaging/windows/winget/Java-Mx.BitChat.yaml
 
-      - name: Submit to Microsoft winget-pkgs (Optional automated submission)
+      - name: Verify WinGet Manifest Consistency & Check Upstream Duplicate
+        id: winget_check
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          MANIFEST="packaging/windows/winget/Java-Mx.BitChat.yaml"
+          INSTALLER="dist/BitChat-${VERSION}-windows-x64.exe"
+
+          if [ ! -f "$MANIFEST" ]; then
+            echo "::error::Missing WinGet manifest: $MANIFEST"
+            exit 1
+          fi
+
+          MANIFEST_ID=$(grep -E '^PackageIdentifier:' "$MANIFEST" | awk '{print $2}' | tr -d '\r')
+          MANIFEST_VER=$(grep -E '^PackageVersion:' "$MANIFEST" | awk '{print $2}' | tr -d '\r')
+          MANIFEST_SHA=$(grep -E 'InstallerSha256:' "$MANIFEST" | awk '{print $2}' | tr -d '\r' | tr '[:lower:]' '[:upper:]')
+          ACTUAL_SHA=$(sha256sum "$INSTALLER" | awk '{print toupper($1)}')
+
+          if [ "$MANIFEST_ID" != "Java-Mx.BitChat" ]; then
+            echo "::error::Unexpected PackageIdentifier '$MANIFEST_ID' (expected Java-Mx.BitChat)"
+            exit 1
+          fi
+          if [ "$MANIFEST_VER" != "$VERSION" ]; then
+            echo "::error::WinGet manifest PackageVersion '$MANIFEST_VER' does not match release tag '$VERSION'"
+            exit 1
+          fi
+          if [ "$MANIFEST_SHA" != "$ACTUAL_SHA" ]; then
+            echo "::error::WinGet manifest InstallerSha256 '$MANIFEST_SHA' does not match installer '$ACTUAL_SHA'"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "sha256=$ACTUAL_SHA" >> "$GITHUB_OUTPUT"
+
+          # Check whether this exact version is already published in microsoft/winget-pkgs
+          UPSTREAM_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://api.github.com/repos/microsoft/winget-pkgs/contents/manifests/j/Java-Mx/BitChat/${VERSION}")
+          if [ "$UPSTREAM_CODE" = "200" ]; then
+            echo "already_exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Java-Mx.BitChat ${VERSION} is already published in microsoft/winget-pkgs; skipping duplicate submission."
+          else
+            echo "already_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Warn if WINGET_TOKEN Secret Is Not Configured
+        if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && steps.winget_check.outputs.already_exists != 'true' && env.WINGET_TOKEN == ''
+        run: |
+          VERSION="${{ steps.winget_check.outputs.version }}"
+          echo "::warning title=WinGet Publication Skipped (Missing WINGET_TOKEN)::GitHub Release v${VERSION} succeeded, but automated submission to microsoft/winget-pkgs was skipped because secrets.WINGET_TOKEN is not configured. Submit manifests/j/Java-Mx/BitChat/${VERSION}/ manually or configure WINGET_TOKEN."
+          {
+            echo "### WinGet Publication Status (v${VERSION})"
+            echo ""
+            echo "| Check | Status |"
+            echo "|---|---|"
+            echo "| **PackageIdentifier** | \`Java-Mx.BitChat\` |"
+            echo "| **Manifest Version & SHA-256** | Verified (\`${{ steps.winget_check.outputs.sha256 }}\`) |"
+            echo "| **Upstream Submission** | **SKIPPED — \`secrets.WINGET_TOKEN\` not configured** |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Submit to Microsoft winget-pkgs
+        id: winget_submit
+        continue-on-error: true
         uses: vedantmgoyal2009/winget-releaser@v2
-        if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && env.WINGET_TOKEN != ''
+        if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && steps.winget_check.outputs.already_exists != 'true' && env.WINGET_TOKEN != ''
         with:
           identifier: Java-Mx.BitChat
           installers-regex: 'BitChat-.*-windows-x64\.exe$'
           token: ${{ secrets.WINGET_TOKEN }}
+
+      - name: Report WinGet Submission Outcome
+        if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && steps.winget_check.outputs.already_exists != 'true' && env.WINGET_TOKEN != ''
+        run: |
+          VERSION="${{ steps.winget_check.outputs.version }}"
+          PR_URL=$(curl -s "https://api.github.com/search/issues?q=repo:microsoft/winget-pkgs+is:pr+in:title+Java-Mx.BitChat+${VERSION}" | python3 -c "import json,sys; items=json.load(sys.stdin).get('items',[]); print(items[0]['html_url'] if items else 'Not found')" || echo "Lookup unavailable")
+          OUTCOME="${{ steps.winget_submit.outcome }}"
+          {
+            echo "### WinGet Publication Status (v${VERSION})"
+            echo ""
+            echo "| Check | Status |"
+            echo "|---|---|"
+            echo "| **PackageIdentifier** | \`Java-Mx.BitChat\` |"
+            echo "| **Manifest Version & SHA-256** | Verified (\`${{ steps.winget_check.outputs.sha256 }}\`) |"
+            echo "| **Submission Step Outcome** | \`${OUTCOME}\` |"
+            echo "| **Upstream PR URL** | ${PR_URL} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "::error title=WinGet Submission Failed::Automated submission to microsoft/winget-pkgs failed (outcome=${OUTCOME}). Check step logs and PR status (${PR_URL})."
+            exit 1
+          fi

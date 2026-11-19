@@ -292,9 +292,10 @@ Published via GitHub Actions Release workflow run [`44473478669`](https://github
 
 ## 21. WinGet Status
 
-- Multi-file manifests generated at `manifests/j/Java-Mx/BitChat/0.3.3/` and singleton manifest at `packaging/windows/winget/Java-Mx.BitChat.yaml`.
-- Both validated cleanly with `winget validate` (`0` errors).
-- Final `InstallerSha256` synchronized to match the published GitHub Release `v0.3.3` `BitChat-0.3.3-windows-x64.exe` asset.
+- Multi-file manifests at `manifests/j/Java-Mx/BitChat/0.3.3/` (including `ReleaseNotes`, verified `InstallerSha256: BB0609FCE1B3A68A1EA358024FE501093D330CC092D1BD562EAC5FF124ECCEEC`) and singleton manifest at `packaging/windows/winget/Java-Mx.BitChat.yaml` both pass `winget validate` cleanly (`0` errors, `0` warnings).
+- Preserves exact `PackageIdentifier: Java-Mx.BitChat`, `Moniker: bitchat-rustpy`, and Inno Setup AppId `{B17CHA70-B1EC-4E87-99B7-4DA78D0B7001}` for in-place `0.3.1 → 0.3.3` upgrades; verified locally by upgrading published `BitChat-0.3.1-windows-x64.exe` → `BitChat-0.3.3-windows-x64.exe` with `%USERPROFILE%\.bitchat\identity.json` SHA-256 preserved identically.
+- **Upstream Publication Status:** **PENDING Microsoft validation & merge** — official PR submitted at [microsoft/winget-pkgs#483934](https://github.com/microsoft/winget-pkgs/pull/483934) (`license/cla` and automated stages `01–04` passed; awaiting remaining Microsoft validation & merge; `v0.3.1` remains live in `winget` catalog until `#483934` merges and propagates).
+- **Release Automation Fix (`.github/workflows/release.yml`):** Root cause of why `v0.3.3` skipped automated WinGet submission in run `44473478669` was an unconfigured `secrets.WINGET_TOKEN` silently skipped by `if: ... && env.WINGET_TOKEN != ''`. Hardened `.github/workflows/release.yml` with manifest version/SHA-256 consistency verification, upstream duplicate check, explicit `::warning::` when `WINGET_TOKEN` is unset, and a mandatory `$GITHUB_STEP_SUMMARY` WinGet status table.
 
 ---
 

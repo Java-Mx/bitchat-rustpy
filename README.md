@@ -105,7 +105,7 @@ BitChat provides dedicated distribution channels tailored for each platform:
 #### WinGet
 
 > [!NOTE]
-> **Status:** Published in Microsoft's official WinGet repository (`Java-Mx.BitChat`, initial release merged in [microsoft/winget-pkgs#443445](https://github.com/microsoft/winget-pkgs/pull/443445); `v0.3.1` update with moniker `bitchat-rustpy` merged in [microsoft/winget-pkgs#481727](https://github.com/microsoft/winget-pkgs/pull/481727); `v0.3.3` manifests prepared).
+> **Status:** Published in Microsoft's official WinGet repository (`Java-Mx.BitChat`, initial `v0.1.0` merged in [microsoft/winget-pkgs#443445](https://github.com/microsoft/winget-pkgs/pull/443445); `v0.3.1` update with moniker `bitchat-rustpy` merged in [microsoft/winget-pkgs#481727](https://github.com/microsoft/winget-pkgs/pull/481727); **`v0.3.3` update submitted in [microsoft/winget-pkgs#483934](https://github.com/microsoft/winget-pkgs/pull/483934) — pending Microsoft validation & merge**). Until `#483934` merges and propagates, `winget` serves `0.3.1` or you can install `v0.3.3` directly via the GitHub Release installer or local manifest below.
 > Official WinGet manifests are maintained and validated in the repository at [`manifests/j/Java-Mx/BitChat/0.3.3/`](manifests/j/Java-Mx/BitChat/0.3.3/).
 
 Install via Microsoft WinGet:
