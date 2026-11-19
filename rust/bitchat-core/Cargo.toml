@@ -4,13 +4,23 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "High-performance Rust native core for BitChat protocol, fragmentation, framing, and mesh routing"
+description = "High-performance Rust native core for BitChat protocol, cryptography, Noise XX, mesh routing, and transports"
 
 [lib]
 name = "_bitchat_core"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+aes-gcm = "0.10"
+chacha20poly1305 = "0.10"
+ed25519-dalek = { version = "2.1", features = ["rand_core", "zeroize"] }
+hkdf = "0.12"
+hmac = "0.12"
+pbkdf2 = { version = "0.12", features = ["hmac"] }
 pyo3 = { version = "0.24", features = ["abi3-py312"] }
 rand = "0.8"
+rand_core = { version = "0.6", features = ["getrandom"] }
 sha2 = "0.10"
+tokio = { version = "1", features = ["net", "io-util", "rt-multi-thread", "sync", "time", "macros"] }
+x25519-dalek = { version = "2.0", features = ["static_secrets", "zeroize"] }
+zeroize = { version = "1.8", features = ["derive"] }

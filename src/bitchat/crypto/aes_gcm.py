@@ -1,22 +1,12 @@
 """
-AES-256-GCM encryption wrapper for BitChat legacy direct-message encryption.
+AES-256-GCM encryption wrapper for BitChat legacy direct-message and channel encryption.
 
-Implements the encryption/decryption used in the legacy X25519 key-agreement
-path (``encryption.rs`` ``encrypt_legacy`` / ``decrypt_legacy`` and
-``encrypt_with_key`` / ``decrypt_with_key``).
+Delegates to the native Rust `aes-gcm` engine in `bitchat._bitchat_core`
+when available, while retaining the pure-Python `cryptography` implementation
+(`py_*`) for fallback and differential verification.
 
 Wire format (matching Rust):
     ``nonce(12 bytes) || ciphertext+tag(N+16 bytes)``
-
-Security rules enforced here:
-  - Every encryption call generates a fresh 12-byte random nonce via ``os.urandom``.
-  - The nonce is NEVER reused within a single encrypt call.
-  - Callers must rotate keys before nonce space exhaustion (not tracked here;
-    upper layers are responsible for key freshness).
-  - Authentication tag is included in the ``cryptography`` library's output
-    automatically (AES-GCM mode appends the 16-byte tag to ciphertext).
-
-Reference: Rust ``encryption.rs`` lines 204-262, 296-329.
 """
 
 from __future__ import annotations
@@ -25,6 +15,7 @@ import os
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from bitchat._native import HAS_NATIVE_CORE, _core, raise_mapped_error
 from bitchat.exceptions import DecryptionError, EncryptionError
 
 # ---------------------------------------------------------------------------
@@ -45,27 +36,12 @@ _MIN_CIPHERTEXT_SIZE: int = AES_NONCE_SIZE + AES_TAG_SIZE
 
 
 # ---------------------------------------------------------------------------
-# Encryption
+# Pure-Python reference implementations (retained for differential tests)
 # ---------------------------------------------------------------------------
 
 
-def encrypt(key: bytes, plaintext: bytes) -> bytes:
-    """Encrypt ``plaintext`` with AES-256-GCM using a fresh random nonce.
-
-    Returns the combined ``nonce || ciphertext+tag`` blob matching the Rust
-    wire format (``encryption.rs`` lines 217-221).
-
-    Args:
-        key: 32-byte AES-256 key.
-        plaintext: Data to encrypt.
-
-    Returns:
-        ``nonce(12) || ciphertext+tag`` — total length is
-        ``len(plaintext) + 28`` bytes.
-
-    Raises:
-        EncryptionError: If the key is invalid or the AEAD operation fails.
-    """
+def py_encrypt(key: bytes, plaintext: bytes) -> bytes:
+    """Pure-Python AES-256-GCM encryption."""
     _validate_key(key)
     nonce = os.urandom(AES_NONCE_SIZE)
     try:
@@ -76,48 +52,8 @@ def encrypt(key: bytes, plaintext: bytes) -> bytes:
     return nonce + ciphertext_and_tag
 
 
-def encrypt_with_key(key: bytes, plaintext: bytes) -> bytes:
-    """Encrypt with an explicit channel key.  Alias for ``encrypt``.
-
-    Used for password-protected channel message encryption
-    (``encryption.rs`` ``encrypt_with_key``).
-
-    Args:
-        key: 32-byte AES-256 channel key.
-        plaintext: Data to encrypt.
-
-    Returns:
-        ``nonce(12) || ciphertext+tag``.
-
-    Raises:
-        EncryptionError: If key is invalid or encryption fails.
-    """
-    return encrypt(key, plaintext)
-
-
-# ---------------------------------------------------------------------------
-# Decryption
-# ---------------------------------------------------------------------------
-
-
-def decrypt(key: bytes, data: bytes) -> bytes:
-    """Decrypt an AES-256-GCM payload in ``nonce || ciphertext+tag`` format.
-
-    Matches the Rust ``decrypt_legacy`` (``encryption.rs`` lines 241-262).
-    The ``cryptography`` library verifies the GCM tag internally; if it fails,
-    it raises ``InvalidTag``, which we map to ``DecryptionError``.
-
-    Args:
-        key: 32-byte AES-256 key (must be the same key used for encryption).
-        data: ``nonce(12) || ciphertext+tag`` blob.
-
-    Returns:
-        Decrypted plaintext bytes.
-
-    Raises:
-        DecryptionError: If ``data`` is too short, the key is invalid, the
-            authentication tag fails, or any other decryption error occurs.
-    """
+def py_decrypt(key: bytes, data: bytes) -> bytes:
+    """Pure-Python AES-256-GCM decryption."""
     _validate_key(key)
     if not isinstance(data, (bytes, bytearray)):
         raise DecryptionError(f"AES-GCM input must be bytes, got {type(data).__name__}")
@@ -131,28 +67,52 @@ def decrypt(key: bytes, data: bytes) -> bytes:
     try:
         aesgcm = AESGCM(bytes(key))
         return aesgcm.decrypt(nonce, ciphertext_and_tag, None)
-    except Exception as exc:  # cryptography raises InvalidTag or ValueError
+    except Exception as exc:
         raise DecryptionError(
             "AES-256-GCM decryption or authentication failed"
         ) from exc
 
 
+# ---------------------------------------------------------------------------
+# Public API (Native Rust with Pure-Python Fallback)
+# ---------------------------------------------------------------------------
+
+
+def encrypt(key: bytes, plaintext: bytes) -> bytes:
+    """Encrypt ``plaintext`` with AES-256-GCM using a fresh random nonce."""
+    _validate_key(key)
+    if not isinstance(plaintext, (bytes, bytearray, memoryview)):
+        raise EncryptionError(
+            f"AES-256-GCM plaintext must be bytes, got {type(plaintext).__name__}"
+        )
+    if HAS_NATIVE_CORE and hasattr(_core, "aes_gcm_encrypt"):
+        try:
+            return bytes(_core.aes_gcm_encrypt(bytes(key), bytes(plaintext)))
+        except ValueError as exc:
+            raise_mapped_error(exc)
+    return py_encrypt(key, bytes(plaintext))
+
+
+def encrypt_with_key(key: bytes, plaintext: bytes) -> bytes:
+    """Encrypt with an explicit channel key. Alias for ``encrypt``."""
+    return encrypt(key, plaintext)
+
+
+def decrypt(key: bytes, data: bytes) -> bytes:
+    """Decrypt an AES-256-GCM payload in ``nonce || ciphertext+tag`` format."""
+    _validate_key(key)
+    if not isinstance(data, (bytes, bytearray)):
+        raise DecryptionError(f"AES-GCM input must be bytes, got {type(data).__name__}")
+    if HAS_NATIVE_CORE and hasattr(_core, "aes_gcm_decrypt"):
+        try:
+            return bytes(_core.aes_gcm_decrypt(bytes(key), bytes(data)))
+        except ValueError as exc:
+            raise_mapped_error(exc)
+    return py_decrypt(key, data)
+
+
 def decrypt_with_key(key: bytes, data: bytes) -> bytes:
-    """Decrypt a channel-key-encrypted payload.  Alias for ``decrypt``.
-
-    Used for password-protected channel message decryption
-    (``encryption.rs`` ``decrypt_with_key``).
-
-    Args:
-        key: 32-byte AES-256 channel key.
-        data: ``nonce(12) || ciphertext+tag`` blob.
-
-    Returns:
-        Decrypted plaintext bytes.
-
-    Raises:
-        DecryptionError: If decryption or authentication fails.
-    """
+    """Decrypt a channel-key-encrypted payload. Alias for ``decrypt``."""
     return decrypt(key, data)
 
 

@@ -153,13 +153,14 @@ When two peers attempt to initiate a private conversation simultaneously:
 
 ---
 
-## 9. Python Implementation & Security Deviations
+## 9. Native Rust (`rust/bitchat-core`) & Python Implementation Details
 
-In `bitchat.crypto.noise`, the following security decisions have been made:
+In `rust/bitchat-core/src/noise.rs` (`bitchat._bitchat_core`) and `bitchat.crypto.noise`, the following security and observability guarantees are enforced:
 
-1. **Fail-Closed on Payload Decryption Failure:** The reference implementation continues the handshake even if payload decryption fails (noted in comments as for debugging). The Python implementation treats this as a fatal `AuthenticationError`, failing closed to prevent forged payloads.
-2. **Replay Window Implementation:** A bounded `set[int]` with eviction is maintained, ensuring at most 1024 nonce counters are stored without memory growth.
+1. **Fail-Closed on Payload Decryption Failure:** The reference implementation continues the handshake even if payload decryption fails (noted in comments as for debugging). Both our Rust `NativeNoiseSymmetricState` and Python `NoiseSymmetricState` treat this as a fatal `AuthenticationError`, failing closed to prevent forged payloads.
+2. **Replay Window & Nonce 0 Protection:** A bounded 1,024-entry sliding window (`NOISE_REPLAY_WINDOW_SIZE = 1024`) validates all transport nonces including wire nonce `0`, marking a nonce seen only after AEAD authentication succeeds.
 3. **Transport Cipher Direction:** Confirmed matching the reference fix (lines 1235–1240):
    - Initiator: `send = c1`, `receive = c2`
    - Responder: `send = c2`, `receive = c1`
+4. **Deterministic 12-Phase Observable Handshake State Machine:** Both LAN and BLE sessions progress through explicit observable phases (`Discovered`, `Connecting`, `TransportConnected`, `GattReady`, `HandshakeInitiated`, `AwaitingMessage2`, `AwaitingMessage3`, `AuthenticatingIdentity`, `Established`, `Failed`, `Closing`, `Closed`) managed by `NativeHandshakeStateMachine` with secret-redacted diagnostic reports.
 

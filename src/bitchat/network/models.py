@@ -7,6 +7,8 @@ import time
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from bitchat._native import HAS_NATIVE_CORE, _core
+
 MAX_DISCOVERY_PACKET_SIZE: int = 1024
 
 
@@ -148,8 +150,8 @@ class DiscoveryPacket:
     transport: str = "lan"
     instance_id: str = ""
 
-    def to_bytes(self) -> bytes:
-        """Serialize discovery packet to compact UTF-8 JSON bytes."""
+    def py_to_bytes(self) -> bytes:
+        """Pure-Python serialization of discovery packet to compact UTF-8 JSON bytes."""
         payload = {
             "protocol": self.protocol,
             "version": self.version,
@@ -167,9 +169,34 @@ class DiscoveryPacket:
             )
         return raw
 
+    def to_bytes(self) -> bytes:
+        """Serialize discovery packet to compact UTF-8 JSON bytes."""
+        if (
+            HAS_NATIVE_CORE
+            and hasattr(_core, "encode_discovery_packet_raw")
+            and self.protocol == "bitchat"
+            and self.transport == "lan"
+        ):
+            try:
+                return bytes(
+                    _core.encode_discovery_packet_raw(
+                        self.peer_id,
+                        self.port,
+                        self.nickname,
+                        self.instance_id,
+                        self.version,
+                        self.ssid,
+                        self.protocol,
+                        self.transport,
+                    )
+                )
+            except ValueError:
+                pass
+        return self.py_to_bytes()
+
     @classmethod
-    def from_bytes(cls, raw: bytes) -> DiscoveryPacket | None:
-        """Validate and parse incoming raw UDP bytes into DiscoveryPacket."""
+    def py_from_bytes(cls, raw: bytes) -> DiscoveryPacket | None:
+        """Pure-Python validation and parsing of incoming raw UDP bytes."""
         if not raw or len(raw) > MAX_DISCOVERY_PACKET_SIZE:
             return None
 
@@ -208,6 +235,26 @@ class DiscoveryPacket:
             )
         except Exception:
             return None
+
+    @classmethod
+    def from_bytes(cls, raw: bytes) -> DiscoveryPacket | None:
+        """Validate and parse incoming raw UDP bytes into DiscoveryPacket."""
+        if not raw or len(raw) > MAX_DISCOVERY_PACKET_SIZE:
+            return None
+        if HAS_NATIVE_CORE and hasattr(_core, "decode_discovery_packet_full_raw"):
+            decoded = _core.decode_discovery_packet_full_raw(bytes(raw))
+            if decoded is not None:
+                peer_id, port, nickname, ssid, instance_id, version = decoded
+                return cls(
+                    peer_id=peer_id,
+                    nickname=nickname,
+                    port=port,
+                    ssid=ssid,
+                    instance_id=instance_id,
+                    version=version,
+                )
+            return None
+        return cls.py_from_bytes(raw)
 
 
 @dataclass

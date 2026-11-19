@@ -8,6 +8,7 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any
 
+from bitchat._native import HAS_NATIVE_CORE, _core
 from bitchat.logging import log_transport_diagnostic
 from bitchat.network.adapter import NetworkAdapterManager, is_local_ip
 from bitchat.network.connection import LANConnection
@@ -179,6 +180,11 @@ class LANTransport(BaseTransport):
         """
         local_id = self.local_peer_id.lower() if self.local_peer_id else ""
         if local_id and remote_id and local_id != remote_id:
+            if HAS_NATIVE_CORE and hasattr(_core, "arbitrate_simultaneous_connection"):
+                return (
+                    _core.arbitrate_simultaneous_connection(local_id, remote_id)
+                    == "keep_outbound"
+                )
             return local_id < remote_id.lower()
         local_port = self.server.bound_port
         local_ip = self.adapter_manager.current_info.local_ip or "0.0.0.0"
@@ -797,6 +803,8 @@ class LANTransport(BaseTransport):
         if self.offline_mode:
             raise RuntimeError("Cannot transmit packet: offline mode is active")
         conn = self._connections.get(address)
+        if not conn or not conn.is_ready:
+            conn = self._find_existing_connection(address)
         if not conn or not conn.is_ready:
             # Auto-connect if discovered
             conn = await self.connect_peer(address)

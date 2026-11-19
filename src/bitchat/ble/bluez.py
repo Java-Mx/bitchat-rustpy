@@ -8,6 +8,7 @@ import logging
 import uuid
 from typing import TYPE_CHECKING, Annotated, Any
 
+from bitchat._native import HAS_NATIVE_CORE, _core
 from bitchat.exceptions import BLEError
 from bitchat.protocol.constants import (
     BITCHAT_CHARACTERISTIC_UUID,
@@ -244,8 +245,18 @@ def _next_id() -> int:
     return _counter
 
 
-def _manufacturer_advertisement_payload(service_uuid: str) -> bytes:
-    return b"BC" + uuid.UUID(service_uuid).bytes
+def _manufacturer_advertisement_payload(service_uuid: str, peer_id: str = "") -> bytes:
+    uuid_bytes = uuid.UUID(service_uuid).bytes
+    pid_bytes: bytes | None = None
+    clean_pid = peer_id.strip()
+    if len(clean_pid) == 16:
+        with contextlib.suppress(ValueError):
+            pid_bytes = bytes.fromhex(clean_pid)
+    if HAS_NATIVE_CORE and hasattr(_core, "encode_ble_manufacturer_payload"):
+        return bytes(_core.encode_ble_manufacturer_payload(uuid_bytes, pid_bytes))
+    if pid_bytes is not None:
+        return b"BC" + uuid_bytes + pid_bytes
+    return b"BC" + uuid_bytes
 
 
 class BlueZGattApplication(ServiceInterface):
@@ -462,12 +473,14 @@ class BlueZAdvertisement(ServiceInterface):
         include_manufacturer_data: bool = True,
         local_name: str | None = None,
         on_released: Callable[[], None] | None = None,
+        peer_id: str = "",
     ) -> None:
         super().__init__("org.bluez.LEAdvertisement1")
         self._service_uuid = service_uuid.lower()
         self._include_manufacturer_data = include_manufacturer_data
         self._local_name = local_name
         self._on_released = on_released
+        self._peer_id = peer_id
         self._released = False
 
     @dbus_property(access=PropertyAccess.READ)
@@ -486,7 +499,7 @@ class BlueZAdvertisement(ServiceInterface):
     def ManufacturerData(self) -> ManufacturerDict:
         if not self._include_manufacturer_data:
             return {}
-        payload = _manufacturer_advertisement_payload(self._service_uuid)
+        payload = _manufacturer_advertisement_payload(self._service_uuid, self._peer_id)
         return {0xFFFF: Variant("ay", payload)}
 
     @dbus_property(access=PropertyAccess.READ)
@@ -573,6 +586,8 @@ class BlueZServerBackend:
         """Update advertised identity metadata."""
         self.peer_id = peer_id
         self.nickname = nickname
+        if self._advertisement is not None:
+            self._advertisement._peer_id = peer_id
 
     def _on_advertisement_released(self) -> None:
         """Invoked when BlueZ daemon unexpectedly releases our advertisement."""
@@ -668,6 +683,7 @@ class BlueZServerBackend:
                     service_uuid=self.service_uuid,
                     include_manufacturer_data=True,
                     on_released=self._on_advertisement_released,
+                    peer_id=self.peer_id,
                 )
                 bus.export(self._adv_path, self._advertisement)
 

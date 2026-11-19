@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from bleak import BleakScanner
 
+from bitchat._native import HAS_NATIVE_CORE, _core
 from bitchat.ble.models import DiscoveredPeer
 from bitchat.exceptions import BLEScanError
 from bitchat.protocol.constants import BITCHAT_SERVICE_UUID
@@ -135,17 +136,56 @@ class BLEScanner:
             mfg_prefix = self._mfg_prefix
             if mfg_prefix is None:
                 mfg_prefix = b"BC" + uuid.UUID(self.service_uuid).bytes
+            expected_uuid_bytes = mfg_prefix[2:18]
             for company_id, m_payload in mfg_data.items():
                 if company_id in (0xFFFF, 0x0000):
                     raw = bytes(m_payload)
+                    if (
+                        HAS_NATIVE_CORE
+                        and hasattr(_core, "decode_ble_manufacturer_payload")
+                        and len(raw) in (18, 26)
+                        and b"|" not in raw[18:]
+                    ):
+                        matched, native_pid = _core.decode_ble_manufacturer_payload(
+                            raw, expected_uuid_bytes
+                        )
+                        if matched:
+                            is_bitchat = True
+                            rest = raw[18:]
+                            if len(rest) == 8:
+                                try:
+                                    ascii_str = rest.decode("ascii")
+                                    if all(
+                                        c in "0123456789abcdefABCDEF" for c in ascii_str
+                                    ):
+                                        extracted_peer_id = ascii_str.lower()
+                                    else:
+                                        extracted_peer_id = native_pid
+                                except UnicodeDecodeError:
+                                    extracted_peer_id = native_pid
+                            break
                     if raw.startswith(mfg_prefix):
                         is_bitchat = True
                         rest = raw[18:]
                         if rest:
-                            parts = rest.decode("utf-8", errors="ignore").split("|", 1)
-                            extracted_peer_id = parts[0]
-                            if len(parts) > 1:
-                                extracted_nick = parts[1]
+                            if len(rest) == 8 and b"|" not in rest:
+                                try:
+                                    ascii_str = rest.decode("ascii")
+                                    if all(
+                                        c in "0123456789abcdefABCDEF" for c in ascii_str
+                                    ):
+                                        extracted_peer_id = ascii_str.lower()
+                                    else:
+                                        extracted_peer_id = rest.hex()
+                                except UnicodeDecodeError:
+                                    extracted_peer_id = rest.hex()
+                            else:
+                                parts = rest.decode("utf-8", errors="ignore").split(
+                                    "|", 1
+                                )
+                                extracted_peer_id = parts[0]
+                                if len(parts) > 1:
+                                    extracted_nick = parts[1]
                         break
 
         # Strict filtering: ignore all non-BitChat devices!

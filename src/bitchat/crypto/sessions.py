@@ -2,34 +2,26 @@
 High-level Noise session abstraction for BitChat.
 
 ``NoiseSession`` wraps a complete per-peer Noise XX handshake and transport
-cipher lifecycle.  It is the only public interface that upper-layer code
-(routing, application) should use for Noise operations.
-
-The session API exposes only the operations required by higher layers:
-  - ``start_handshake()``
-  - ``process_handshake_message()``
-  - ``encrypt()``
-  - ``decrypt()``
-  - ``close()``
-
-Internal Noise state (cipher keys, chaining key, handshake hash) is NOT
-exposed to callers.  Read-only metadata (state, role, remote fingerprint) is
-accessible through properties.
-
-Reference: Rust ``noise_session.rs`` ``NoiseSession`` (lines 56-426).
+cipher lifecycle, plus an explicit observable handshake state machine
+(`NativeHandshakeStateMachine`).
 """
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import hmac
+import time
+from typing import Any
 
+from bitchat._native import HAS_NATIVE_CORE, _core
 from bitchat.crypto.identity import LocalIdentity, calculate_fingerprint
 from bitchat.crypto.noise import (
     NoiseCipherState,
     NoiseHandshakeState,
     NoiseRole,
     NoiseSessionState,
+    ObservableSessionPhase,
     determine_handshake_role,
 )
 from bitchat.exceptions import (
@@ -41,28 +33,14 @@ from bitchat.exceptions import (
 
 
 class NoiseSession:
-    """Per-peer Noise XX session — handshake and transport cipher lifecycle.
-
-    State machine:
-      UNINITIALIZED → (start_handshake or receive) → HANDSHAKING
-      HANDSHAKING   → (all messages exchanged)     → ESTABLISHED
-      ESTABLISHED   → (close)                      → CLOSED
-      HANDSHAKING   → (auth failure)               → FAILED
-      Any           → (close)                      → CLOSED
-
-    Only the ESTABLISHED state allows encrypt/decrypt.  Calling them in any
-    other state raises ``NoiseStateError``.
-
-    Args:
-        local_identity: Local cryptographic identity (holds static X25519 key).
-        remote_peer_id: Remote peer ID used for role tie-breaking and key binding.
-    """
+    """Per-peer Noise XX session — handshake and transport cipher lifecycle."""
 
     def __init__(
         self,
         local_identity: LocalIdentity,
         remote_peer_id: str,
         role: NoiseRole | None = None,
+        transport: str = "lan",
     ) -> None:
         self._local_identity = local_identity
         self._remote_peer_id = remote_peer_id
@@ -78,6 +56,15 @@ class NoiseSession:
         self._remote_static_public: bytes | None = None
         self._handshake_hash: bytes | None = None
         self._remote_fingerprint: str | None = None
+        self._handshake_started_at: float | None = None
+        self._observable_phase: ObservableSessionPhase = (
+            ObservableSessionPhase.DISCOVERED
+        )
+        self._state_machine: Any | None = None
+        if HAS_NATIVE_CORE and hasattr(_core, "NativeHandshakeStateMachine"):
+            self._state_machine = _core.NativeHandshakeStateMachine(
+                remote_peer_id, transport, time.monotonic(), 3
+            )
 
     # -----------------------------------------------------------------------
     # Properties — read-only session metadata
@@ -87,6 +74,31 @@ class NoiseSession:
     def state(self) -> NoiseSessionState:
         """Current lifecycle state of this session."""
         return self._state
+
+    @property
+    def observable_phase(self) -> ObservableSessionPhase:
+        """Detailed observable handshake phase (Section 7)."""
+        return self._observable_phase
+
+    @property
+    def diagnostic_reason(self) -> str:
+        """Redacted diagnostic reason for the current phase."""
+        if self._state_machine is not None:
+            return str(self._state_machine.diagnostic_reason)
+        return self._observable_phase.value
+
+    def record_phase(self, phase: ObservableSessionPhase, reason: str = "") -> None:
+        """Transition the observable session phase and record diagnostic metadata."""
+        self._observable_phase = phase
+        if self._state_machine is not None:
+            with contextlib.suppress(Exception):
+                self._state_machine.transition_to(phase.value, reason, time.monotonic())
+
+    def phase_history(self) -> list[tuple[str, float, str]]:
+        """Return recent observable phase transition history."""
+        if self._state_machine is not None:
+            return list(self._state_machine.history())
+        return [(self._observable_phase.value, 0.0, self.diagnostic_reason)]
 
     @property
     def role(self) -> NoiseRole:
@@ -100,18 +112,12 @@ class NoiseSession:
 
     @property
     def remote_fingerprint(self) -> str | None:
-        """64-char hex fingerprint of the remote peer's X25519 static key.
-
-        Available only after handshake reaches ESTABLISHED.
-        """
+        """64-char hex fingerprint of the remote peer's X25519 static key."""
         return self._remote_fingerprint
 
     @property
     def handshake_hash(self) -> bytes | None:
-        """32-byte handshake transcript hash for channel binding.
-
-        Available only after handshake reaches ESTABLISHED.
-        """
+        """32-byte handshake transcript hash for channel binding."""
         return self._handshake_hash
 
     @property
@@ -123,18 +129,25 @@ class NoiseSession:
     # Handshake
     # -----------------------------------------------------------------------
 
+    def reset_for_rehandshake(self, new_role: NoiseRole | None = None) -> None:
+        """Reset an unestablished or failed session for a clean handshake attempt."""
+        if new_role is not None:
+            self._role = new_role
+        self._state = NoiseSessionState.UNINITIALIZED
+        self._handshake_state = None
+        self._send_cipher = None
+        self._recv_cipher = None
+        self._remote_static_public = None
+        self._handshake_hash = None
+        self._remote_fingerprint = None
+        self._handshake_started_at = None
+        self.record_phase(
+            ObservableSessionPhase.HANDSHAKE_INITIATED,
+            "Session reset for fresh handshake",
+        )
+
     def start_handshake(self) -> bytes | None:
-        """Initialise the handshake and return the first message if Initiator.
-
-        Valid from UNINITIALIZED state only.
-
-        Returns:
-            - Initiator: first handshake message bytes to send.
-            - Responder: ``None`` (waits for initiator's first message).
-
-        Raises:
-            NoiseStateError: If called from a state other than UNINITIALIZED.
-        """
+        """Initialise the handshake and return the first message if Initiator."""
         if self._state != NoiseSessionState.UNINITIALIZED:
             raise NoiseStateError(
                 f"start_handshake() called in invalid state: {self._state.value}"
@@ -144,33 +157,23 @@ class NoiseSession:
             local_static_private=self._local_identity.x25519_private,
         )
         self._state = NoiseSessionState.HANDSHAKING
+        self._handshake_started_at = time.monotonic()
+        self.record_phase(
+            ObservableSessionPhase.HANDSHAKE_INITIATED,
+            f"Handshake started as {self._role.value}",
+        )
         if self._role == NoiseRole.INITIATOR:
-            return self._handshake_state.write_message(b"")
+            msg1 = self._handshake_state.write_message(b"")
+            self.record_phase(
+                ObservableSessionPhase.AWAITING_MESSAGE_2,
+                "Noise XX Message 1 [E] generated",
+            )
+            return msg1
         return None
 
     def process_handshake_message(self, message: bytes) -> bytes | None:
-        """Process an inbound handshake message and return response if needed.
-
-        Handles both Initiator and Responder message flows.  Automatically
-        transitions to ESTABLISHED once all patterns are complete.
-
-        Matching Rust ``NoiseSession::process_handshake_message``
-        (``noise_session.rs`` lines 191-366).
-
-        Args:
-            message: Raw handshake message bytes from the peer.
-
-        Returns:
-            Response bytes to send back, or ``None`` if no response is needed.
-
-        Raises:
-            NoiseStateError: If called outside HANDSHAKING or UNINITIALIZED
-                (Responder auto-initialises from UNINITIALIZED).
-            NoiseError: If the handshake message is malformed.
-            AuthenticationError: If authentication fails during handshake.
-        """
+        """Process an inbound handshake message and return response if needed."""
         try:
-            # Responder may auto-initialise (matching Rust lines 206-227)
             if (
                 self._state == NoiseSessionState.UNINITIALIZED
                 and self._role == NoiseRole.RESPONDER
@@ -180,6 +183,10 @@ class NoiseSession:
                     local_static_private=self._local_identity.x25519_private,
                 )
                 self._state = NoiseSessionState.HANDSHAKING
+                self.record_phase(
+                    ObservableSessionPhase.HANDSHAKE_INITIATED,
+                    "Responder auto-initialized on inbound Message 1",
+                )
 
             if self._state != NoiseSessionState.HANDSHAKING:
                 raise NoiseStateError(
@@ -191,18 +198,29 @@ class NoiseSession:
 
             _payload = self._handshake_state.read_message(bytes(message))
 
-            # Check if we need to write a response
             response: bytes | None = None
             if not self._handshake_state.is_handshake_complete():
                 response = self._handshake_state.write_message(b"")
+                if self._role == NoiseRole.RESPONDER:
+                    self.record_phase(
+                        ObservableSessionPhase.AWAITING_MESSAGE_3,
+                        "Noise XX Message 2 [E, EE, S, ES] generated",
+                    )
 
-            # Check completion after possible write
             if self._handshake_state.is_handshake_complete():
+                self.record_phase(
+                    ObservableSessionPhase.AUTHENTICATING_IDENTITY,
+                    "Verifying remote static key and peer-ID binding",
+                )
                 self._finalise_handshake()
 
             return response
-        except (NoiseError, CryptoError, Exception):
+        except (NoiseError, CryptoError, Exception) as exc:
             self._state = NoiseSessionState.FAILED
+            self.record_phase(
+                ObservableSessionPhase.FAILED,
+                f"Handshake failed: {type(exc).__name__}",
+            )
             raise
 
     def _finalise_handshake(self) -> None:
@@ -249,28 +267,19 @@ class NoiseSession:
         self._remote_static_public = remote_static_public
         self._handshake_hash = self._handshake_state.get_handshake_hash()
         self._remote_fingerprint = calculate_fingerprint(remote_static_public)
-        self._handshake_state = None  # Clear handshake state (Rust line 292)
+        self._handshake_state = None
         self._state = NoiseSessionState.ESTABLISHED
+        self.record_phase(
+            ObservableSessionPhase.ESTABLISHED,
+            "Noise XX transport established and peer identity verified",
+        )
 
     # -----------------------------------------------------------------------
     # Transport
     # -----------------------------------------------------------------------
 
     def encrypt(self, plaintext: bytes) -> bytes:
-        """Encrypt a transport message.
-
-        Only valid in ESTABLISHED state.
-
-        Args:
-            plaintext: Data to encrypt.
-
-        Returns:
-            ``nonce(4) || ciphertext+tag`` bytes.
-
-        Raises:
-            NoiseStateError: If the session is not ESTABLISHED.
-            EncryptionError: If encryption fails.
-        """
+        """Encrypt a transport message."""
         if self._state != NoiseSessionState.ESTABLISHED:
             raise NoiseStateError(
                 f"encrypt() requires ESTABLISHED state, got {self._state.value}"
@@ -280,22 +289,7 @@ class NoiseSession:
         return self._send_cipher.encrypt(bytes(plaintext), b"")
 
     def decrypt(self, ciphertext: bytes) -> bytes:
-        """Decrypt a transport message.
-
-        Only valid in ESTABLISHED state.  Raises ``ReplayError`` for duplicate
-        transport nonces.
-
-        Args:
-            ciphertext: ``nonce(4) || ciphertext+tag`` bytes.
-
-        Returns:
-            Decrypted plaintext bytes.
-
-        Raises:
-            NoiseStateError: If the session is not ESTABLISHED.
-            DecryptionError: If authentication fails.
-            ReplayError: If the transport nonce is a replay.
-        """
+        """Decrypt a transport message."""
         if self._state != NoiseSessionState.ESTABLISHED:
             raise NoiseStateError(
                 f"decrypt() requires ESTABLISHED state, got {self._state.value}"
@@ -309,12 +303,10 @@ class NoiseSession:
     # -----------------------------------------------------------------------
 
     def close(self) -> None:
-        """Close the session and zero out cipher key references.
-
-        Transitions to CLOSED state.  Subsequent encrypt/decrypt will raise
-        ``NoiseStateError``.
-        """
+        """Close the session and zero out cipher key references."""
+        self.record_phase(ObservableSessionPhase.CLOSING, "Session closing")
         self._send_cipher = None
         self._recv_cipher = None
         self._handshake_state = None
         self._state = NoiseSessionState.CLOSED
+        self.record_phase(ObservableSessionPhase.CLOSED, "Session closed")

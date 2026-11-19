@@ -139,9 +139,9 @@ In the reference implementation (`encryption.rs`), if the 32-byte persistent ide
 
 ---
 
-## 4. Python Implementation Status (`bitchat.crypto`)
+## 4. Native Rust (`rust/bitchat-core`) & Python Implementation Status (`bitchat.crypto`)
 
-All cryptographic primitives are fully implemented in pure Python using only `cryptography`:
+All cryptographic primitives are implemented natively in Rust (`rust/bitchat-core/src/crypto.rs` and `noise.rs` with `zeroize` memory scrubbing) and wrapped by `bitchat.crypto` with pure-Python `cryptography` fallback and byte-for-byte differential verification (`tests/unit/test_native_core.py`):
 
 | Primitive | Python Module | Reference Equivalent | Status |
 |---|---|---|---|

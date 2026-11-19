@@ -1,6 +1,6 @@
 name: bitchat
 base: core24
-version: '0.3.1'
+version: '0.3.2'
 summary: Encrypted peer-to-peer BLE and LAN mesh chat built with Python and Rust
 description: |
   BitChat RustPy is a decentralized peer-to-peer terminal chat client operating

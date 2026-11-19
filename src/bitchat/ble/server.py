@@ -8,6 +8,7 @@ import logging
 import uuid
 from typing import TYPE_CHECKING, Any
 
+from bitchat._native import HAS_NATIVE_CORE, _core
 from bitchat.exceptions import BLEError
 from bitchat.logging import log_transport_diagnostic
 from bitchat.platform.detection import (
@@ -63,8 +64,18 @@ def _extract_winrt_error_info(exc: Exception) -> tuple[int | None, str | None]:
     return win32_code, hresult_str
 
 
-def _manufacturer_advertisement_payload(service_uuid: str) -> bytes:
-    return b"BC" + uuid.UUID(service_uuid).bytes
+def _manufacturer_advertisement_payload(service_uuid: str, peer_id: str = "") -> bytes:
+    uuid_bytes = uuid.UUID(service_uuid).bytes
+    pid_bytes: bytes | None = None
+    clean_pid = peer_id.strip()
+    if len(clean_pid) == 16:
+        with contextlib.suppress(ValueError):
+            pid_bytes = bytes.fromhex(clean_pid)
+    if HAS_NATIVE_CORE and hasattr(_core, "encode_ble_manufacturer_payload"):
+        return bytes(_core.encode_ble_manufacturer_payload(uuid_bytes, pid_bytes))
+    if pid_bytes is not None:
+        return b"BC" + uuid_bytes + pid_bytes
+    return b"BC" + uuid_bytes
 
 
 class BLEServer:
@@ -404,7 +415,9 @@ class BLEServer:
                 m = adv.BluetoothLEManufacturerData()
                 m.company_id = 0xFFFF
                 writer = DataWriter()
-                payload = _manufacturer_advertisement_payload(self.service_uuid)
+                payload = _manufacturer_advertisement_payload(
+                    self.service_uuid, self.peer_id
+                )
                 if len(payload) + _MANUFACTURER_AD_STRUCTURE_OVERHEAD > (
                     _LEGACY_ADVERTISEMENT_MAX_BYTES
                 ):
@@ -606,7 +619,10 @@ class BLEServer:
                 if req.option == gatt.GattWriteOption.WRITE_WITH_RESPONSE:
                     req.respond()
 
-                client_id = "winrt_client"
+                session = getattr(req, "session", None)
+                dev_id = getattr(session, "device_id", None) if session else None
+                raw_id = str(getattr(dev_id, "id", dev_id or "")).strip()
+                client_id = raw_id if raw_id else "winrt_client"
                 if self.on_data_received is not None:
                     self.on_data_received(raw_bytes, client_id)
             except Exception as e:
@@ -626,9 +642,17 @@ class BLEServer:
             count = len(subs) if subs is not None else 0
             logger.info("BLE subscriber count changed: %d", count)
             if count > 0 and self.on_client_subscribed:
-                self.on_client_subscribed("client")
+                client_id = "winrt_client"
+                if subs:
+                    first_sub = subs[0]
+                    sess = getattr(first_sub, "session", None)
+                    dev_id = getattr(sess, "device_id", None) if sess else None
+                    raw_id = str(getattr(dev_id, "id", dev_id or "")).strip()
+                    if raw_id:
+                        client_id = raw_id
+                self.on_client_subscribed(client_id)
             elif count == 0 and self.on_client_unsubscribed:
-                self.on_client_unsubscribed("client")
+                self.on_client_unsubscribed("winrt_client")
         except Exception as e:
             logger.debug("Error in subscribers_changed callback: %s", e)
 

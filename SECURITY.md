@@ -10,8 +10,8 @@ Security fixes are applied to the latest release on the `main` branch. Earlier p
 
 | Version | Supported | Status |
 | :--- | :--- | :--- |
-| **`0.3.1` (`main`)** | ✅ Yes | Current release (Hybrid Python + Rust `bitchat._bitchat_core`) |
-| `< 0.3.1` | ❌ No | Upgrade to `0.3.1` |
+| **`0.3.2` (`main`)** | ✅ Yes | Current release (Hybrid Python + Rust `bitchat._bitchat_core`) |
+| `< 0.3.2` | ❌ No | Upgrade to `0.3.2` |
 
 ---
 
@@ -47,7 +47,7 @@ We ask researchers to act in good faith, avoid disrupting other users' devices o
 
 ## 3. Audit Status
 
-> **Important Notice:** BitChat `v0.3.1` has **not** undergone an independent third-party cryptographic or security audit. While the codebase uses standard cryptographic primitives and automated test suites, it should not be relied upon for life-safety, critical infrastructure, or high-threat adversarial operations.
+> **Important Notice:** BitChat `v0.3.2` has **not** undergone an independent third-party cryptographic or security audit. While the codebase uses standard cryptographic primitives and automated test suites, it should not be relied upon for life-safety, critical infrastructure, or high-threat adversarial operations.
 
 ---
 
@@ -76,7 +76,7 @@ We ask researchers to act in good faith, avoid disrupting other users' devices o
 
 To help users and auditors evaluate BitChat accurately, the table below distinguishes what is implemented and tested today from known limitations, unverified assumptions, and planned future work:
 
-### 5.1 Implemented Protections (`v0.3.1`)
+### 5.1 Implemented Protections (`v0.3.2`)
 
 - **Mutual Authenticated Key Agreement:** Direct peer sessions use the `Noise_XX_25519_ChaChaPoly_SHA256` handshake pattern (`src/bitchat/crypto/noise.py`), providing mutual static key authentication and forward secrecy via ephemeral X25519 keys.
 - **Authenticated Encryption & Replay Window:** Established Noise sessions encrypt payloads with `ChaCha20-Poly1305` using 4-byte little-endian counter prefixes and enforce a 1,024-entry sliding replay window. Channel/legacy symmetric encryption uses `AES-256-GCM` with 96-bit OS CSPRNG nonces.
@@ -102,7 +102,7 @@ To help users and auditors evaluate BitChat accurately, the table below distingu
 1. **Unencrypted Outer Routing Headers:** The outer BitChat binary packet header (`version`, `message_type`, `ttl`, `timestamp`, `flags`, `payload_len`, `sender_id`, and optional `recipient_id`) is transmitted in plaintext so intermediate nodes can route, deduplicate, and reassemble packets (though PKCS#7-style block padding to `256`/`512`/`1024`/`2048` bytes obscures exact payload lengths). Passive observers in radio range or on the same LAN can observe sender/recipient IDs and timing.
 2. **Public Broadcast Messages (`0x04 Message`):** Messages sent to the public broadcast channel (`recipient_id = ffffffffffffffff`) are not encrypted for a specific peer and can be read by any connected peer within hop range.
 3. **Unencrypted Private Keys at Rest:** `~/.bitchat/identity.json` stores `x25519_private` and `ed25519_private` as hexadecimal strings protected by OS file permissions (`0600` / Windows user DACL), not encrypted with a user passphrase or hardware security module (TPM / OS keychain).
-4. **Python Memory Zeroization Limits:** In `v0.3.1`, cryptographic keys and plaintext strings pass through Python `bytes` and `str` objects managed by the CPython allocator and garbage collector, which cannot be deterministically zeroized in RAM before collection.
+4. **Python Memory Zeroization Limits:** In native Rust (`bitchat._bitchat_core`), secret keys, nonces, and shared secrets are deterministically zeroized on drop via `zeroize`. However, in Python fallback mode and at the high-level Python boundary, keys and plaintext strings pass through Python `bytes` and `str` objects managed by the CPython allocator and garbage collector, which cannot be deterministically zeroized in RAM before collection.
 5. **TOFU First-Contact Exposure:** In `normal` security mode, the very first connection to a previously unknown peer trusts the presented public key unless an active attacker is detected via out-of-band fingerprint comparison (`/fingerprint`, `/verify`).
 6. **Unsigned Windows Binaries When Built Without Signing Secrets:** Official release builds only attach an Authenticode signature if code-signing secrets (`WINDOWS_SIGNING_CERT`) are configured in the build environment; otherwise, Windows SmartScreen will display an unknown-publisher warning and users should verify the `.sha256` checksum.
 

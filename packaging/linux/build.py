@@ -204,6 +204,22 @@ def validate_flatpak_metadata(expected_version: str) -> None:
     print("[+] Flatpak manifest and AppStream metadata verified.")
 
 
+def validate_arch_pkgbuild(expected_version: str) -> None:
+    """Verify Arch Linux PKGBUILD version and metadata consistency."""
+    pkgbuild_file = LINUX_PACKAGING_DIR / "arch" / "PKGBUILD"
+    if not pkgbuild_file.is_file():
+        raise FileNotFoundError(f"Missing Arch Linux PKGBUILD: {pkgbuild_file}")
+
+    content = pkgbuild_file.read_text(encoding="utf-8")
+    if f"pkgver={expected_version}" not in content:
+        raise ValueError(
+            f"Arch PKGBUILD pkgver mismatch (expected pkgver={expected_version})"
+        )
+    assert "pkgname=bitchat-rustpy" in content
+    assert "maturin" in content
+    print("[+] Arch Linux PKGBUILD verified.")
+
+
 def build_flatpak_bundle(output_dir: Path | None = None) -> Path | None:
     """Build single-file Flatpak bundle if flatpak-builder and flatpak are available."""
     out_dir = output_dir or DIST_DIR
@@ -312,9 +328,10 @@ def main() -> int:
         appimage_file = appimage_mod.build_appimage_package(source_bundle)
         print(f"[+] AppImage ready: {appimage_file}")
 
-    # 4. Flatpak Validation & Bundle Build
+    # 4. Flatpak & Arch PKGBUILD Validation & Bundle Build
     if not args.skip_flatpak:
         validate_flatpak_metadata(version)
+        validate_arch_pkgbuild(version)
         should_build = args.build_flatpak or (
             sys.platform.startswith("linux") and bool(shutil.which("flatpak-builder"))
         )

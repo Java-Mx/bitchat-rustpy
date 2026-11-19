@@ -1,12 +1,19 @@
-# BitChat Protocol Interoperability & Compatibility (`v0.3.1`)
+# BitChat Protocol Interoperability & Compatibility (`v0.3.2`)
 
-This document specifies the wire-level compatibility between BitChat (`bitchat-rustpy` `v0.3.1`, including its embedded `rust/bitchat-core` native extension) and external BitChat v1 reference implementations, including intentional security hardening differences.
+This document specifies the wire-level compatibility between BitChat (`bitchat-rustpy` `v0.3.2`, including its embedded `rust/bitchat-core` native extension) and external BitChat v1 reference implementations, including intentional security hardening differences.
 
 ---
 
-## 1. Internal Python ↔ Rust Core Differential Parity (`v0.3.1`)
+## 1. Internal Python ↔ Rust Core Differential Parity (`v0.3.2`)
 
-Within this repository, `rust/bitchat-core` (`bitchat._bitchat_core`) and the pure-Python reference modules (`src/bitchat/protocol/`, `src/bitchat/network/framing.py`, `src/bitchat/mesh/dedup.py`) are 100% byte-for-byte compatible and continuously verified by `tests/unit/test_native_core.py`.
+Within this repository, `rust/bitchat-core` (`bitchat._bitchat_core`) and the pure-Python reference modules (`src/bitchat/protocol/`, `src/bitchat/crypto/`, `src/bitchat/network/`, `src/bitchat/mesh/`, `src/bitchat/ble/`) are 100% byte-for-byte compatible across packet serialization, fragmentation/reassembly, TCP stream framing, X25519, Ed25519, AES-256-GCM, Noise/legacy HKDF-SHA256, PBKDF2-HMAC-SHA256, all three `Noise_XX_25519_ChaChaPoly_SHA256` handshake messages, transport cipher states, mesh routing decisions, and store-and-forward queuing, continuously verified by `tests/unit/test_native_core.py`.
+
+### TCP Stream Framing Integrity & Wire Invariants
+- **Stream Framing Magic:** `FRAME_MAGIC = b"BC\x01\x00"` (4 bytes).
+- **Stream Framing Header:** 8 bytes total (4 bytes magic + 4-byte Big-Endian `u32` payload length).
+- **Wire Framing Integrity:** Stream framing wraps unmodified raw `BitchatPacket` wire bytes. In accordance with the BitChat v1 wire specification, no extra framing CRC checksum is appended or prepended to the packet payload. Payload integrity and authenticity for private sessions are governed authoritatively by the Noise AEAD (ChaCha20-Poly1305) 128-bit authentication tag, while broadcast packets rely on Ed25519 signatures and the SHA-256 digest in multi-hop deduplication.
+
+---
 
 ## 2. Binary Packet Encoding Checklist (`v1`)
 

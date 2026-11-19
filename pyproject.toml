@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "bitchat"
-version = "0.3.1"
+version = "0.3.2"
 description = "Decentralized, encrypted peer-to-peer mesh messaging over Bluetooth LE and local networks, built with Python and accelerated by Rust"
 readme = "README.md"
 license = "MIT"

@@ -1,15 +1,9 @@
 """
 X25519 Diffie-Hellman key exchange wrapper for BitChat.
 
-Wraps ``cryptography.hazmat.primitives.asymmetric.x25519`` with:
-  - Explicit 32-byte size enforcement
-  - Low-order point validation (matching Rust ``validate_public_key`` in
-    ``noise_protocol.rs`` lines 1307-1368)
-  - BitChat-specific exception types
-
-Reference: Rust ``encryption.rs`` — ``StaticSecret::random_from_rng``,
-``PublicKey::from``, ``private_key.diffie_hellman``.
-``noise_protocol.rs`` — ``NoiseHandshakeState::validate_public_key``.
+Delegates to the native Rust `x25519-dalek` engine in `bitchat._bitchat_core`
+when available, while retaining the pure-Python `cryptography` implementation
+(`py_*`) for fallback and differential verification.
 
 Key sizes:
   - Private key: 32 bytes
@@ -26,6 +20,7 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import (
     X25519PublicKey,
 )
 
+from bitchat._native import HAS_NATIVE_CORE, _core, raise_mapped_error
 from bitchat.exceptions import InvalidKeyError, KeyExchangeError
 
 # ---------------------------------------------------------------------------
@@ -40,8 +35,7 @@ X25519_SHARED_SECRET_SIZE: int = 32
 
 # Low-order points on Curve25519 that enable small-subgroup attacks.
 # Reproduced from Rust ``noise_protocol.rs`` ``validate_public_key``
-# (lines 1319-1353).  Matching these exactly ensures consistent key rejection
-# across the Python and Rust implementations.
+# (lines 1319-1353).
 _LOW_ORDER_POINTS: frozenset[bytes] = frozenset(
     [
         bytes(32),  # All zeros — point at infinity
@@ -80,7 +74,7 @@ _LOW_ORDER_POINTS: frozenset[bytes] = frozenset(
                 0x00,
                 0x01,
             ]
-        ),  # Point of order 1
+        ),
         bytes(
             [
                 0x00,
@@ -116,7 +110,7 @@ _LOW_ORDER_POINTS: frozenset[bytes] = frozenset(
                 0x00,
                 0x01,
             ]
-        ),  # Another low-order point
+        ),
         bytes(
             [
                 0xE0,
@@ -152,7 +146,7 @@ _LOW_ORDER_POINTS: frozenset[bytes] = frozenset(
                 0xB8,
                 0x00,
             ]
-        ),  # Low-order point
+        ),
         bytes(
             [
                 0x5F,
@@ -188,8 +182,8 @@ _LOW_ORDER_POINTS: frozenset[bytes] = frozenset(
                 0x11,
                 0x57,
             ]
-        ),  # Low-order point
-        bytes([0xFF] * 32),  # All ones
+        ),
+        bytes([0xFF] * 32),
         bytes(
             [
                 0xDA,
@@ -225,7 +219,7 @@ _LOW_ORDER_POINTS: frozenset[bytes] = frozenset(
                 0xFF,
                 0xFF,
             ]
-        ),  # Bad point
+        ),
         bytes(
             [
                 0xDB,
@@ -261,40 +255,24 @@ _LOW_ORDER_POINTS: frozenset[bytes] = frozenset(
                 0xFF,
                 0xFF,
             ]
-        ),  # Bad point
+        ),
     ]
 )
 
 
 # ---------------------------------------------------------------------------
-# Key generation
+# Pure-Python reference implementations (retained for differential tests)
 # ---------------------------------------------------------------------------
 
 
-def generate_private_key() -> bytes:
-    """Generate a new X25519 private key using the OS CSPRNG.
-
-    Returns:
-        32-byte raw X25519 private key.  Handle with care — do not log or
-        store in plaintext.
-    """
+def py_generate_private_key() -> bytes:
+    """Pure-Python X25519 private key generation."""
     private_key = X25519PrivateKey.generate()
     return private_key.private_bytes_raw()
 
 
-def public_key_from_private(private_key_bytes: bytes) -> bytes:
-    """Derive the 32-byte X25519 public key from a raw private key.
-
-    Args:
-        private_key_bytes: 32-byte raw X25519 private key.
-
-    Returns:
-        32-byte raw X25519 public key.
-
-    Raises:
-        InvalidKeyError: If ``private_key_bytes`` is not exactly 32 bytes or
-            is otherwise invalid.
-    """
+def py_public_key_from_private(private_key_bytes: bytes) -> bytes:
+    """Pure-Python X25519 public key derivation."""
     _validate_private_key_input(private_key_bytes)
     try:
         private_key = X25519PrivateKey.from_private_bytes(bytes(private_key_bytes))
@@ -303,23 +281,8 @@ def public_key_from_private(private_key_bytes: bytes) -> bytes:
         raise InvalidKeyError(f"Invalid X25519 private key: {exc}") from exc
 
 
-def validate_public_key(public_key_bytes: bytes) -> bytes:
-    """Validate a raw 32-byte X25519 public key.
-
-    Checks:
-    - Correct length (32 bytes)
-    - Not a known low-order/weak point (matching Rust reference)
-    - Parseable by the cryptography library
-
-    Args:
-        public_key_bytes: 32-byte raw X25519 public key.
-
-    Returns:
-        The validated key as immutable ``bytes``.
-
-    Raises:
-        InvalidKeyError: If the key fails any validation check.
-    """
+def py_validate_public_key(public_key_bytes: bytes) -> bytes:
+    """Pure-Python X25519 public key validation."""
     if not isinstance(public_key_bytes, (bytes, bytearray)):
         raise InvalidKeyError(
             f"X25519 public key must be bytes, got {type(public_key_bytes).__name__}"
@@ -339,32 +302,10 @@ def validate_public_key(public_key_bytes: bytes) -> bytes:
     return key_bytes
 
 
-# ---------------------------------------------------------------------------
-# Diffie-Hellman exchange
-# ---------------------------------------------------------------------------
-
-
-def diffie_hellman(local_private_bytes: bytes, remote_public_bytes: bytes) -> bytes:
-    """Perform an X25519 Diffie-Hellman key exchange.
-
-    Validates the remote public key for low-order points before performing
-    the exchange (matching Rust ``validate_public_key`` call in
-    ``noise_protocol.rs``).
-
-    Args:
-        local_private_bytes: 32-byte raw local X25519 private key.
-        remote_public_bytes: 32-byte raw remote X25519 public key.
-
-    Returns:
-        32-byte shared secret.  Do NOT log or expose this value.
-
-    Raises:
-        InvalidKeyError: If either key is malformed, wrong size, or
-            ``remote_public_bytes`` is a low-order point.
-        KeyExchangeError: If the DH operation fails for any other reason.
-    """
+def py_diffie_hellman(local_private_bytes: bytes, remote_public_bytes: bytes) -> bytes:
+    """Pure-Python X25519 Diffie-Hellman exchange."""
     _validate_private_key_input(local_private_bytes)
-    remote_validated = validate_public_key(remote_public_bytes)
+    remote_validated = py_validate_public_key(remote_public_bytes)
     try:
         private_key = X25519PrivateKey.from_private_bytes(bytes(local_private_bytes))
         remote_pub = X25519PublicKey.from_public_bytes(remote_validated)
@@ -378,6 +319,65 @@ def diffie_hellman(local_private_bytes: bytes, remote_public_bytes: bytes) -> by
             f"X25519 produced unexpected shared secret length {len(shared)}"
         )
     return shared
+
+
+# ---------------------------------------------------------------------------
+# Public API (Native Rust with Pure-Python Fallback)
+# ---------------------------------------------------------------------------
+
+
+def generate_private_key() -> bytes:
+    """Generate a new X25519 private key using the OS CSPRNG."""
+    if HAS_NATIVE_CORE and hasattr(_core, "x25519_generate_private_key"):
+        try:
+            return bytes(_core.x25519_generate_private_key())
+        except ValueError as exc:
+            raise_mapped_error(exc)
+    return py_generate_private_key()
+
+
+def public_key_from_private(private_key_bytes: bytes) -> bytes:
+    """Derive the 32-byte X25519 public key from a raw private key."""
+    _validate_private_key_input(private_key_bytes)
+    if HAS_NATIVE_CORE and hasattr(_core, "x25519_public_key_from_private"):
+        try:
+            return bytes(_core.x25519_public_key_from_private(bytes(private_key_bytes)))
+        except ValueError as exc:
+            raise_mapped_error(exc)
+    return py_public_key_from_private(private_key_bytes)
+
+
+def validate_public_key(public_key_bytes: bytes) -> bytes:
+    """Validate a raw 32-byte X25519 public key."""
+    if not isinstance(public_key_bytes, (bytes, bytearray)):
+        raise InvalidKeyError(
+            f"X25519 public key must be bytes, got {type(public_key_bytes).__name__}"
+        )
+    if HAS_NATIVE_CORE and hasattr(_core, "x25519_validate_public_key"):
+        try:
+            return bytes(_core.x25519_validate_public_key(bytes(public_key_bytes)))
+        except ValueError as exc:
+            raise_mapped_error(exc)
+    return py_validate_public_key(public_key_bytes)
+
+
+def diffie_hellman(local_private_bytes: bytes, remote_public_bytes: bytes) -> bytes:
+    """Perform an X25519 Diffie-Hellman key exchange."""
+    _validate_private_key_input(local_private_bytes)
+    if not isinstance(remote_public_bytes, (bytes, bytearray)):
+        raise InvalidKeyError(
+            f"X25519 public key must be bytes, got {type(remote_public_bytes).__name__}"
+        )
+    if HAS_NATIVE_CORE and hasattr(_core, "x25519_diffie_hellman"):
+        try:
+            return bytes(
+                _core.x25519_diffie_hellman(
+                    bytes(local_private_bytes), bytes(remote_public_bytes)
+                )
+            )
+        except ValueError as exc:
+            raise_mapped_error(exc)
+    return py_diffie_hellman(local_private_bytes, remote_public_bytes)
 
 
 # ---------------------------------------------------------------------------

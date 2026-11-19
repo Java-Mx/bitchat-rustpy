@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.28.0.schema.json
 
 PackageIdentifier: Java-Mx.BitChat
-PackageVersion: 0.3.1
+PackageVersion: 0.3.2
 PackageLocale: en-US
 Publisher: Java-Mx
 PublisherUrl: https://github.com/Java-Mx
@@ -14,7 +14,8 @@ Copyright: Copyright (c) BitChat Contributors
 ShortDescription: Decentralized encrypted peer-to-peer mesh terminal chat client built with Python and Rust
 Description: |-
   BitChat RustPy is a decentralized, end-to-end encrypted peer-to-peer mesh chat application for the terminal operating over Bluetooth Low Energy (BLE) and local area networks (LAN).
-  Built with Python and a native Rust core (_bitchat_core), it features authenticated Noise XX sessions, multi-hop mesh routing, and an interactive Textual terminal user interface with no servers or accounts required.
+  Built with Python and a native Rust core (_bitchat_core), it features authenticated Noise XX sessions, multi-hop mesh routing,
+  and an interactive Textual terminal user interface with no servers or accounts required.
 Moniker: bitchat-rustpy
 Tags:
   - bitchat
@@ -29,13 +30,13 @@ Tags:
   - rust
   - terminal
   - tui
-ReleaseNotesUrl: https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v0.3.1
+ReleaseNotesUrl: https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v0.3.2
 Installers:
   - Architecture: x64
     InstallerType: inno
     Scope: user
-    InstallerUrl: https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.1/BitChat-0.3.1-windows-x64.exe
-    InstallerSha256: 2A2D68F5B7B975620AF7197030A6DD068C8A0D096AEEECFC69F5DBB3FA84A75A
+    InstallerUrl: https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.2/BitChat-0.3.2-windows-x64.exe
+    InstallerSha256: 4FEE6B1D4464FFEFD92DBD3CD342C848FED82A29E718AB9B34FB5B6ADE5EB768
     UpgradeBehavior: install
 ManifestType: singleton
 ManifestVersion: 1.28.0

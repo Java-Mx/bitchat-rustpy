@@ -1,13 +1,13 @@
-# BitChat — System Requirements & Feature Status (`v0.3.1`)
+# BitChat — System Requirements & Feature Status (`v0.3.2`)
 
 ## 1. System Overview & Architectural Philosophy
 
-**BitChat** (`bitchat-rustpy` `v0.3.1`) is a peer-to-peer encrypted terminal messenger operating over **Bluetooth Low Energy (BLE)** and **Local Area Network (LAN)** transports. It combines a high-performance **Rust native core (`bitchat._bitchat_core`)** built with PyO3 and Maturin with an asynchronous **Python 3.10+ (`asyncio` + `Textual`)** application and terminal UI layer.
+**BitChat** (`bitchat-rustpy` `v0.3.2`) is a peer-to-peer encrypted terminal messenger operating over **Bluetooth Low Energy (BLE)** and **Local Area Network (LAN)** transports. It combines a high-performance **Rust native core (`bitchat._bitchat_core`)** built with PyO3 and Maturin with an asynchronous **Python 3.10+ (`asyncio` + `Textual`)** application and terminal UI layer.
 
 ### Core Architectural Principles
 
 1. **Decentralized, Zero-Server Operation:** No central servers, cloud relays, accounts, or telemetry.
-2. **Hybrid Python + Rust Architecture (`v0.3.1`):** Performance-critical binary packet framing, MTU fragmentation, bounded fragment reassembly, SHA-256 packet deduplication, and store-and-forward queuing execute in compiled Rust (`rust/bitchat-core`), with automatic pure-Python fallback and differential test verification (see [`docs/ROADMAP.md`](ROADMAP.md) for the 7-stage path to a 100% native Rust application).
+2. **Hybrid Python + Rust Architecture (`v0.3.2`):** Performance-critical binary packet framing, MTU fragmentation, bounded fragment reassembly, SHA-256 packet deduplication, store-and-forward queuing, cryptography, Noise XX session engine, and LAN/BLE state engines execute in compiled Rust (`rust/bitchat-core`), with automatic pure-Python fallback and differential test verification (see [`docs/ROADMAP.md`](ROADMAP.md) for the 7-stage path to a 100% native Rust application).
 3. **Strict Layer Isolation:** UI rendering (`bitchat.tui`), session coordination (`bitchat.app`), transport engines (`bitchat.ble`, `bitchat.network`, `bitchat.transport`), mesh routing (`bitchat.mesh`), cryptography (`bitchat.crypto`), and local storage (`bitchat.storage`) communicate through explicit typed interfaces.
 4. **Defensive Resource Bounds:** Every network buffer, fragment reassembly state, deduplication table, store-and-forward queue, and TCP listener enforces strict size, count, and TTL bounds.
 
@@ -17,7 +17,7 @@
 
 ### 2.1 `rust/bitchat-core` (`bitchat._bitchat_core`) & `bitchat.protocol`
 * **Responsibility:** Wire-level binary serialization, deserialization, header validation, MTU-aware packet fragmentation, and bounded fragment reassembly.
-* **Implementation (`v0.3.1`):** Accelerated in Rust (`rust/bitchat-core/src/lib.rs`) exposed via `src/bitchat/_native.py`, with pure-Python reference modules in `src/bitchat/protocol/` (`packet.py`, `encoder.py`, `decoder.py`, `fragmentation.py`, `reassembly.py`, `constants.py`).
+* **Implementation (`v0.3.2`):** Accelerated in Rust (`rust/bitchat-core/src/lib.rs`) exposed via `src/bitchat/_native.py`, with pure-Python reference modules in `src/bitchat/protocol/` (`packet.py`, `encoder.py`, `decoder.py`, `fragmentation.py`, `reassembly.py`, `constants.py`).
 
 ### 2.2 `bitchat.mesh`
 * **Responsibility:** Multi-hop flood routing (`MeshRouter`), SHA-256 `[:16]` packet deduplication (`NativePacketDeduplicator` / `PacketDeduplicator`), per-peer rate limiting (`NativePeerRateLimiter`), and bounded Store-and-Forward buffering (`StoreAndForwardQueue`).
@@ -41,7 +41,7 @@
 
 ## 3. Functional Requirements (`FR`)
 
-| ID | Category | Requirement Description | Target Module(s) | Status (`v0.3.1`) |
+| ID | Category | Requirement Description | Target Module(s) | Status (`v0.3.2`) |
 | :--- | :--- | :--- | :--- | :--- |
 | **FR-01** | Protocol | Encode and decode the big-endian `BitchatPacket` header (`FIXED_HEADER_SIZE = 14`, `MINIMUM_PACKET_SIZE = 22`: `version`, `message_type`, `ttl`, `timestamp`, `flags`, `payload_len`, `sender_id`, optional `recipient_id`, `payload`, optional `signature`) and PKCS#7-style block padding. | `rust/bitchat-core`, `bitchat.protocol` | ✅ Implemented |
 | **FR-02** | Protocol | Support all 22 `MessageType` codes (`0x01` Announce through `0x25` HandshakeRequest). | `rust/bitchat-core`, `bitchat.protocol` | ✅ Implemented |
@@ -67,9 +67,9 @@
 
 ## 4. Non-Functional Requirements (`NFR`)
 
-| ID | Category | Requirement Description | Verification Method | Status (`v0.3.1`) |
+| ID | Category | Requirement Description | Verification Method | Status (`v0.3.2`) |
 | :--- | :--- | :--- | :--- | :--- |
-| **NFR-01** | Security | Cryptographic operations must rely on audited primitives (`cryptography` OpenSSL bindings; Rust `sha2`), never custom math. | Code review, `pip-audit`, `bandit` | ✅ Verified |
+| **NFR-01** | Security | Cryptographic operations must rely on audited primitives (Rust `x25519-dalek`, `ed25519-dalek`, `chacha20poly1305`, `aes-gcm`, `hkdf`, `pbkdf2`, `sha2`, `zeroize`; Python `cryptography` OpenSSL bindings), never custom math. | Code review, `pip-audit`, `bandit` | ✅ Verified |
 | **NFR-02** | Security | Private keys (`LocalIdentity`) must never appear in `__repr__`, `__str__`, exception messages, or `bitchat.log` (`SensitiveDataFilter`). | `tests/unit/test_m5_lifecycle_logging.py`, `tests/crypto/test_identity.py` | ✅ Verified |
 | **NFR-03** | Security | `~/.bitchat/identity.json` must enforce `0600` permissions on POSIX and a current-user-only DACL on Windows, with cross-process file locking. | `tests/unit/test_storage.py`, `tests/unit/test_identity_persistence.py` | ✅ Verified |
 | **NFR-04** | Reliability | Malformed, truncated, or oversized wire frames must raise typed exceptions without crashing the event loop or exhausting memory. | `tests/protocol/test_defensive_bounds.py`, `tests/e2e/` | ✅ Verified |

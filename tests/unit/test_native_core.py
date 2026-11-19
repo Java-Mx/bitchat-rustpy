@@ -65,13 +65,13 @@ from bitchat.protocol.reassembly import FragmentReassembler, PyFragmentReassembl
 
 
 def test_native_core_is_loaded_and_version_matches() -> None:
-    """Verify the compiled Rust extension module is loaded and reports version 0.3.1."""
+    """Verify the compiled Rust extension module is loaded and reports version 0.3.2."""
     from bitchat import __version__
 
     assert HAS_NATIVE_CORE is True
     assert _core is not None
     assert _core.native_core_version() == __version__
-    assert _core.native_core_version() == "0.3.1"
+    assert _core.native_core_version() == "0.3.2"
 
 
 @pytest.mark.parametrize(
@@ -365,3 +365,329 @@ def test_differential_packet_deduplicator() -> None:
     # Expiry after entry_ttl_seconds=10.0s
     assert r_dedup.prune_expired(now=200.0) == py_dedup.prune_expired(now=200.0) == 4
     assert len(r_dedup) == len(py_dedup) == 0
+
+
+# ---------------------------------------------------------------------------
+# Stage 2 Differential Tests: Cryptography & Noise XX Engine
+# ---------------------------------------------------------------------------
+
+
+def test_differential_ed25519_and_x25519_primitives() -> None:
+    """Rust and Python Ed25519 and X25519 primitives produce identical outputs."""
+    from bitchat.crypto import ed25519 as _ed
+    from bitchat.crypto import x25519 as _x
+    from bitchat.exceptions import InvalidKeyError, SignatureVerificationError
+
+    # Ed25519 deterministic key derivation, signing, and cross-verification
+    ed_seed = os.urandom(32)
+    rust_ed_pub = _ed.public_key_from_private(ed_seed)
+    py_ed_pub = _ed.py_public_key_from_private(ed_seed)
+    assert rust_ed_pub == py_ed_pub
+    assert _ed.load_public_key(rust_ed_pub) == _ed.py_load_public_key(py_ed_pub)
+
+    msg = b"BitChat Phase 2 deterministic Ed25519 differential test vector"
+    rust_sig = _ed.sign(ed_seed, msg)
+    py_sig = _ed.py_sign(ed_seed, msg)
+    assert rust_sig == py_sig
+
+    _ed.verify(rust_ed_pub, py_sig, msg)
+    _ed.py_verify(py_ed_pub, rust_sig, msg)
+
+    with pytest.raises(SignatureVerificationError):
+        _ed.verify(rust_ed_pub, rust_sig, msg + b"x")
+    with pytest.raises(SignatureVerificationError):
+        _ed.py_verify(py_ed_pub, py_sig, msg + b"x")
+
+    # X25519 deterministic key derivation, low-order rejection, and DH parity
+    alice_seed = os.urandom(32)
+    bob_seed = os.urandom(32)
+    assert _x.public_key_from_private(alice_seed) == _x.py_public_key_from_private(
+        alice_seed
+    )
+    assert _x.public_key_from_private(bob_seed) == _x.py_public_key_from_private(
+        bob_seed
+    )
+
+    alice_pub = _x.public_key_from_private(alice_seed)
+    bob_pub = _x.public_key_from_private(bob_seed)
+    assert _x.diffie_hellman(alice_seed, bob_pub) == _x.py_diffie_hellman(
+        alice_seed, bob_pub
+    )
+    assert _x.diffie_hellman(bob_seed, alice_pub) == _x.py_diffie_hellman(
+        bob_seed, alice_pub
+    )
+
+    for bad_point in _x._LOW_ORDER_POINTS:
+        with pytest.raises(InvalidKeyError):
+            _x.validate_public_key(bad_point)
+        with pytest.raises(InvalidKeyError):
+            _x.py_validate_public_key(bad_point)
+
+
+def test_differential_aes_gcm_hkdf_pbkdf2_and_identity() -> None:
+    """Rust and Python AES-256-GCM, HKDF, PBKDF2, and identity derivation match."""
+    from bitchat.crypto import aes_gcm as _aes
+    from bitchat.crypto import hkdf as _hkdf
+    from bitchat.crypto import identity as _id
+    from bitchat.crypto import pbkdf2 as _pbkdf2
+
+    key = os.urandom(32)
+    pt = b"cross-engine AES-256-GCM payload"
+    ct_rust = _aes.encrypt(key, pt)
+    ct_py = _aes.py_encrypt(key, pt)
+    assert _aes.py_decrypt(key, ct_rust) == pt
+    assert _aes.decrypt(key, ct_py) == pt
+
+    ck = os.urandom(32)
+    ikm = os.urandom(32)
+    assert _hkdf.noise_hkdf(ck, ikm, 2) == _hkdf.py_noise_hkdf(ck, ikm, 2)
+    assert _hkdf.noise_hkdf(ck, ikm, 3) == _hkdf.py_noise_hkdf(ck, ikm, 3)
+    assert _hkdf.legacy_hkdf(ikm) == _hkdf.py_legacy_hkdf(ikm)
+
+    assert _pbkdf2.derive_channel_key(
+        "correct-horse-battery-staple", "#general"
+    ) == _pbkdf2.py_derive_channel_key("correct-horse-battery-staple", "#general")
+
+    ident = _id.LocalIdentity.generate()
+    assert _id.calculate_fingerprint(
+        ident.x25519_public
+    ) == _id.py_calculate_fingerprint(ident.x25519_public)
+
+
+def test_differential_noise_xx_handshake_byte_for_byte() -> None:
+    """Verify Rust and Python Noise XX 3-message handshake match byte-for-byte."""
+    from bitchat.crypto.noise import (
+        NoiseHandshakeState,
+        NoiseRole,
+        PyNoiseHandshakeState,
+    )
+
+    alice_static = bytes([0x11] * 32)
+    bob_static = bytes([0x22] * 32)
+    alice_eph = bytes([0x33] * 32)
+    bob_eph = bytes([0x44] * 32)
+
+    # 1. Pure-Python handshake with deterministic ephemeral keys
+    py_init = PyNoiseHandshakeState(
+        NoiseRole.INITIATOR,
+        alice_static,
+        fixed_ephemeral_private=alice_eph,
+    )
+    py_resp = PyNoiseHandshakeState(
+        NoiseRole.RESPONDER,
+        bob_static,
+        fixed_ephemeral_private=bob_eph,
+    )
+
+    # 2. Native Rust handshake with identical deterministic ephemeral keys
+    rs_init = NoiseHandshakeState(
+        NoiseRole.INITIATOR,
+        alice_static,
+        fixed_ephemeral_private=alice_eph,
+    )
+    rs_resp = NoiseHandshakeState(
+        NoiseRole.RESPONDER,
+        bob_static,
+        fixed_ephemeral_private=bob_eph,
+    )
+
+    # Message 1: Initiator -> Responder ([E])
+    py_m1 = py_init.write_message(b"")
+    rs_m1 = rs_init.write_message(b"")
+    assert rs_m1 == py_m1
+    assert len(rs_m1) == 32
+
+    assert py_resp.read_message(py_m1) == b""
+    assert rs_resp.read_message(rs_m1) == b""
+
+    # Message 2: Responder -> Initiator ([E, EE, S, ES])
+    py_m2 = py_resp.write_message(b"")
+    rs_m2 = rs_resp.write_message(b"")
+    assert rs_m2 == py_m2
+    assert len(rs_m2) == 96
+
+    assert py_init.read_message(py_m2) == b""
+    assert rs_init.read_message(rs_m2) == b""
+
+    # Message 3: Initiator -> Responder ([S, SE])
+    py_m3 = py_init.write_message(b"")
+    rs_m3 = rs_init.write_message(b"")
+    assert rs_m3 == py_m3
+    assert len(rs_m3) == 64
+
+    assert py_resp.read_message(py_m3) == b""
+    assert rs_resp.read_message(rs_m3) == b""
+
+    assert py_init.is_handshake_complete() and rs_init.is_handshake_complete()
+    assert py_resp.is_handshake_complete() and rs_resp.is_handshake_complete()
+
+    # Handshake hashes and authenticated static keys match byte-for-byte
+    assert (
+        rs_init.get_handshake_hash()
+        == py_init.get_handshake_hash()
+        == rs_resp.get_handshake_hash()
+        == py_resp.get_handshake_hash()
+    )
+    assert (
+        rs_init.get_remote_static_public_key() == py_init.get_remote_static_public_key()
+    )
+    assert (
+        rs_resp.get_remote_static_public_key() == py_resp.get_remote_static_public_key()
+    )
+
+    # Transport ciphers produce identical wire ciphertexts and cross-decrypt
+    py_i_send, py_i_recv = py_init.get_transport_ciphers()
+    py_r_send, py_r_recv = py_resp.get_transport_ciphers()
+    rs_i_send, rs_i_recv = rs_init.get_transport_ciphers()
+    rs_r_send, rs_r_recv = rs_resp.get_transport_ciphers()
+
+    for idx in range(5):
+        payload = f"deterministic transport message #{idx}".encode()
+        py_ct = py_i_send.encrypt(payload, b"")
+        rs_ct = rs_i_send.encrypt(payload, b"")
+        assert rs_ct == py_ct
+        assert py_r_recv.decrypt(rs_ct, b"") == payload
+        assert rs_r_recv.decrypt(py_ct, b"") == payload
+
+        py_reply = py_r_send.encrypt(payload, b"")
+        rs_reply = rs_r_send.encrypt(payload, b"")
+        assert rs_reply == py_reply
+        assert py_i_recv.decrypt(rs_reply, b"") == payload
+        assert rs_i_recv.decrypt(py_reply, b"") == payload
+
+
+# ---------------------------------------------------------------------------
+# Stage 3, 4 & 5 Differential Tests: Mesh, LAN, BLE & Handshake State Machine
+# ---------------------------------------------------------------------------
+
+
+def test_differential_mesh_router_and_store_forward() -> None:
+    """Verify Rust NativeMeshRouter and NativeStoreAndForwardQueue match Python."""
+    from bitchat.mesh.router import MeshRouter, PyMeshRouter
+    from bitchat.mesh.store_forward import (
+        PyStoreAndForwardQueue,
+        StoreAndForwardQueue,
+    )
+
+    my_id = b"\xaa" * 8
+    r_router = MeshRouter(local_peer_id=my_id, max_relay_ttl=7, rate_limit_per_peer=5)
+    p_router = PyMeshRouter(local_peer_id=my_id, max_relay_ttl=7, rate_limit_per_peer=5)
+
+    for idx in range(6):
+        pkt = BitchatPacket.create(
+            message_type=MessageType.Message,
+            sender_id=b"\xbb" * 8,
+            recipient_id=None,
+            payload=f"broadcast-{idx}".encode(),
+            ttl=5,
+            timestamp=5000 + idx,
+        )
+        r_dec = r_router.evaluate_incoming(
+            pkt, ingress_source="10.0.0.2:41235", now=10.0
+        )
+        p_dec = p_router.evaluate_incoming(
+            pkt, ingress_source="10.0.0.2:41235", now=10.0
+        )
+        assert r_dec.should_process_locally == p_dec.should_process_locally
+        assert r_dec.drop_reason == p_dec.drop_reason
+        if r_dec.packet_to_relay is not None and p_dec.packet_to_relay is not None:
+            assert r_dec.packet_to_relay.ttl == p_dec.packet_to_relay.ttl
+
+    assert r_router.get_next_hop(b"\xbb" * 8, now=10.5) == p_router.get_next_hop(
+        b"\xbb" * 8, now=10.5
+    )
+
+    r_sf = StoreAndForwardQueue(
+        max_total_packets=4, max_per_peer=2, packet_ttl_seconds=30.0
+    )
+    p_sf = PyStoreAndForwardQueue(
+        max_total_packets=4, max_per_peer=2, packet_ttl_seconds=30.0
+    )
+    for idx in range(3):
+        pkt = BitchatPacket.create(
+            message_type=MessageType.Message,
+            sender_id=my_id,
+            recipient_id=b"\xcc" * 8,
+            payload=f"queued-{idx}".encode(),
+            timestamp=6000 + idx,
+        )
+        assert r_sf.enqueue("cccccccccccccccc", pkt, now=1.0 + idx) == p_sf.enqueue(
+            "cccccccccccccccc", pkt, now=1.0 + idx
+        )
+
+    assert r_sf.total_packets == p_sf.total_packets == 2
+    assert r_sf.dequeue_for_peer("cccccccccccccccc", now=5.0) == p_sf.dequeue_for_peer(
+        "cccccccccccccccc", now=5.0
+    )
+
+
+def test_native_lan_ble_and_state_machine_primitives() -> None:
+    """Verify Stage 4 LAN, Stage 5 BLE, and Section 7 state machine in Rust."""
+    assert _core is not None
+
+    # LAN discovery codec & interface selection
+    raw_disc = _core.encode_discovery_packet_raw(
+        "0102030405060708", 41235, "alice", "aabbccddeeff0011", 1
+    )
+    decoded = _core.decode_discovery_packet_raw(raw_disc)
+    assert decoded == ("0102030405060708", 41235, "alice", "aabbccddeeff0011", 1)
+
+    ifaces = [
+        ("vEthernet (WSL)", "172.28.16.1", 20, True),
+        ("Wi-Fi", "192.168.1.50", 24, True),
+    ]
+    assert _core.select_best_lan_ip(ifaces) == "192.168.1.50"
+    bcasts = _core.compute_broadcast_targets(ifaces)
+    assert "192.168.1.255" in bcasts
+    assert "255.255.255.255" in bcasts
+
+    assert (
+        _core.arbitrate_simultaneous_connection("0000000000000001", "ffffffffffffffff")
+        == "keep_outbound"
+    )
+    assert (
+        _core.arbitrate_simultaneous_connection("ffffffffffffffff", "0000000000000001")
+        == "keep_inbound"
+    )
+
+    # BLE advertisement codec & pre-ready notification buffering
+    svc_bytes = b"\xaa" * 16
+    pid_bytes = bytes.fromhex("0102030405060708")
+    adv_payload = _core.encode_ble_manufacturer_payload(svc_bytes, pid_bytes)
+    assert _core.decode_ble_manufacturer_payload(adv_payload, svc_bytes) == (
+        True,
+        "0102030405060708",
+    )
+
+    ble_engine = _core.NativeBleConnectionEngine("AA:BB:CC:DD:EE:FF", 185, 32)
+    ble_engine.set_state("subscribing")
+    assert ble_engine.on_notification(b"handshake_msg_1") is None
+    assert ble_engine.buffered_notification_count() == 1
+    drained = ble_engine.mark_ready_and_drain()
+    assert drained == [b"handshake_msg_1"]
+    assert ble_engine.state == "ready"
+
+    # Deterministic 12-phase Handshake State Machine
+    sm = _core.NativeHandshakeStateMachine("0102030405060708", "ble", 10.0, 3)
+    assert sm.phase == "Discovered"
+    for next_phase in (
+        "Connecting",
+        "TransportConnected",
+        "GattReady",
+        "HandshakeInitiated",
+        "AwaitingMessage2",
+        "AwaitingMessage3",
+        "AuthenticatingIdentity",
+        "Established",
+    ):
+        assert sm.transition_to(next_phase, f"enter {next_phase}", 11.0) == next_phase
+    assert len(sm.history()) == 9
+
+    # Native cipher state key inspection and zeroization
+    test_k = b"\x42" * 32
+    cs = _core.NativeNoiseCipherState(test_k, True)
+    assert cs.has_key() is True
+    assert cs.key == test_k
+    cs.clear_key()
+    assert cs.has_key() is False
+    assert cs.key is None

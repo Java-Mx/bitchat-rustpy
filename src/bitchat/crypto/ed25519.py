@@ -1,11 +1,9 @@
 """
 Ed25519 digital signature wrapper for BitChat.
 
-Wraps ``cryptography.hazmat.primitives.asymmetric.ed25519`` with explicit size
-enforcement and BitChat-specific exception types.
-
-Reference: Rust ``encryption.rs`` — ``SigningKey::generate``, ``signing_key.sign``,
-``verifying_key.verify_strict``.
+Delegates to the native Rust `ed25519-dalek` engine in `bitchat._bitchat_core`
+when available, while retaining the pure-Python `cryptography` implementation
+(`py_*`) for fallback and differential verification.
 
 Key sizes (standard Ed25519):
   - Private (signing) key: 32 bytes
@@ -23,6 +21,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
+from bitchat._native import HAS_NATIVE_CORE, _core, raise_mapped_error
 from bitchat.exceptions import (
     InvalidKeyError,
     InvalidSignatureError,
@@ -44,37 +43,18 @@ ED25519_SIGNATURE_SIZE: int = 64
 
 
 # ---------------------------------------------------------------------------
-# Key generation and serialization
+# Pure-Python reference implementations (retained for differential tests)
 # ---------------------------------------------------------------------------
 
 
-def generate_signing_key() -> bytes:
-    """Generate a new Ed25519 signing key and return the raw 32-byte private key.
-
-    Uses the OS CSPRNG via the ``cryptography`` library.  The returned bytes
-    are the raw seed (private key material) — handle with care.
-
-    Returns:
-        32-byte raw Ed25519 private key (seed).
-    """
+def py_generate_signing_key() -> bytes:
+    """Pure-Python Ed25519 signing key generation."""
     private_key = Ed25519PrivateKey.generate()
-    # raw_private returns the 32-byte seed
     return private_key.private_bytes_raw()
 
 
-def public_key_from_private(private_key_bytes: bytes) -> bytes:
-    """Derive the 32-byte Ed25519 public (verifying) key from a private key.
-
-    Args:
-        private_key_bytes: 32-byte raw Ed25519 private key.
-
-    Returns:
-        32-byte raw Ed25519 public key.
-
-    Raises:
-        InvalidKeyError: If ``private_key_bytes`` is not exactly 32 bytes or
-            is otherwise invalid.
-    """
+def py_public_key_from_private(private_key_bytes: bytes) -> bytes:
+    """Pure-Python Ed25519 public key derivation from private key."""
     if not isinstance(private_key_bytes, (bytes, bytearray)):
         raise InvalidKeyError(
             f"Ed25519 private key must be bytes, got {type(private_key_bytes).__name__}"
@@ -91,19 +71,8 @@ def public_key_from_private(private_key_bytes: bytes) -> bytes:
         raise InvalidKeyError(f"Invalid Ed25519 private key: {exc}") from exc
 
 
-def load_public_key(public_key_bytes: bytes) -> bytes:
-    """Validate and normalise a raw 32-byte Ed25519 public key.
-
-    Args:
-        public_key_bytes: 32-byte raw Ed25519 public key.
-
-    Returns:
-        The same 32-byte value as immutable ``bytes``.
-
-    Raises:
-        InvalidKeyError: If the key is not exactly 32 bytes or is otherwise
-            invalid.
-    """
+def py_load_public_key(public_key_bytes: bytes) -> bytes:
+    """Pure-Python Ed25519 public key validation."""
     if not isinstance(public_key_bytes, (bytes, bytearray)):
         raise InvalidKeyError(
             f"Ed25519 public key must be bytes, got {type(public_key_bytes).__name__}"
@@ -114,32 +83,14 @@ def load_public_key(public_key_bytes: bytes) -> bytes:
             f"got {len(public_key_bytes)}"
         )
     try:
-        # Validate by attempting to parse; raises ValueError for invalid points
         Ed25519PublicKey.from_public_bytes(bytes(public_key_bytes))
     except (ValueError, TypeError) as exc:
         raise InvalidKeyError(f"Invalid Ed25519 public key: {exc}") from exc
     return bytes(public_key_bytes)
 
 
-# ---------------------------------------------------------------------------
-# Signing and verification
-# ---------------------------------------------------------------------------
-
-
-def sign(private_key_bytes: bytes, data: bytes) -> bytes:
-    """Sign ``data`` with the given Ed25519 private key.
-
-    Args:
-        private_key_bytes: 32-byte raw Ed25519 private key.
-        data: Arbitrary byte string to sign.
-
-    Returns:
-        64-byte Ed25519 signature.
-
-    Raises:
-        InvalidKeyError: If ``private_key_bytes`` is invalid.
-        TypeError: If ``data`` is not bytes-like.
-    """
+def py_sign(private_key_bytes: bytes, data: bytes) -> bytes:
+    """Pure-Python Ed25519 signing."""
     if not isinstance(private_key_bytes, (bytes, bytearray)):
         raise InvalidKeyError(
             f"Ed25519 private key must be bytes, got {type(private_key_bytes).__name__}"
@@ -164,19 +115,8 @@ def sign(private_key_bytes: bytes, data: bytes) -> bytes:
     return sig
 
 
-def verify(public_key_bytes: bytes, signature: bytes, data: bytes) -> None:
-    """Verify an Ed25519 signature.
-
-    Args:
-        public_key_bytes: 32-byte raw Ed25519 public key.
-        signature: 64-byte Ed25519 signature.
-        data: The original signed data.
-
-    Raises:
-        InvalidKeyError: If ``public_key_bytes`` is not 32 bytes or invalid.
-        InvalidSignatureError: If ``signature`` is not 64 bytes.
-        SignatureVerificationError: If the signature does not verify.
-    """
+def py_verify(public_key_bytes: bytes, signature: bytes, data: bytes) -> None:
+    """Pure-Python Ed25519 verification."""
     if not isinstance(public_key_bytes, (bytes, bytearray)):
         raise InvalidKeyError(
             f"Ed25519 public key must be bytes, got {type(public_key_bytes).__name__}"
@@ -207,3 +147,85 @@ def verify(public_key_bytes: bytes, signature: bytes, data: bytes) -> None:
         raise SignatureVerificationError(
             "Ed25519 signature verification failed"
         ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Public API (Native Rust with Pure-Python Fallback)
+# ---------------------------------------------------------------------------
+
+
+def generate_signing_key() -> bytes:
+    """Generate a new Ed25519 signing key and return the raw 32-byte private key."""
+    if HAS_NATIVE_CORE and hasattr(_core, "ed25519_generate_signing_key"):
+        try:
+            return bytes(_core.ed25519_generate_signing_key())
+        except ValueError as exc:
+            raise_mapped_error(exc)
+    return py_generate_signing_key()
+
+
+def public_key_from_private(private_key_bytes: bytes) -> bytes:
+    """Derive the 32-byte Ed25519 public (verifying) key from a private key."""
+    if not isinstance(private_key_bytes, (bytes, bytearray)):
+        raise InvalidKeyError(
+            f"Ed25519 private key must be bytes, got {type(private_key_bytes).__name__}"
+        )
+    if HAS_NATIVE_CORE and hasattr(_core, "ed25519_public_key_from_private"):
+        try:
+            return bytes(
+                _core.ed25519_public_key_from_private(bytes(private_key_bytes))
+            )
+        except ValueError as exc:
+            raise_mapped_error(exc)
+    return py_public_key_from_private(private_key_bytes)
+
+
+def load_public_key(public_key_bytes: bytes) -> bytes:
+    """Validate and normalise a raw 32-byte Ed25519 public key."""
+    if not isinstance(public_key_bytes, (bytes, bytearray)):
+        raise InvalidKeyError(
+            f"Ed25519 public key must be bytes, got {type(public_key_bytes).__name__}"
+        )
+    if HAS_NATIVE_CORE and hasattr(_core, "ed25519_load_public_key"):
+        try:
+            return bytes(_core.ed25519_load_public_key(bytes(public_key_bytes)))
+        except ValueError as exc:
+            raise_mapped_error(exc)
+    return py_load_public_key(public_key_bytes)
+
+
+def sign(private_key_bytes: bytes, data: bytes) -> bytes:
+    """Sign ``data`` with the given Ed25519 private key."""
+    if not isinstance(private_key_bytes, (bytes, bytearray)):
+        raise InvalidKeyError(
+            f"Ed25519 private key must be bytes, got {type(private_key_bytes).__name__}"
+        )
+    if not isinstance(data, (bytes, bytearray, memoryview)):
+        raise TypeError(f"data must be bytes-like, got {type(data).__name__}")
+    if HAS_NATIVE_CORE and hasattr(_core, "ed25519_sign"):
+        try:
+            return bytes(_core.ed25519_sign(bytes(private_key_bytes), bytes(data)))
+        except ValueError as exc:
+            raise_mapped_error(exc)
+    return py_sign(private_key_bytes, data)
+
+
+def verify(public_key_bytes: bytes, signature: bytes, data: bytes) -> None:
+    """Verify an Ed25519 signature."""
+    if not isinstance(public_key_bytes, (bytes, bytearray)):
+        raise InvalidKeyError(
+            f"Ed25519 public key must be bytes, got {type(public_key_bytes).__name__}"
+        )
+    if not isinstance(signature, (bytes, bytearray)):
+        raise InvalidSignatureError(
+            f"Signature must be bytes, got {type(signature).__name__}"
+        )
+    if not isinstance(data, (bytes, bytearray, memoryview)):
+        raise TypeError(f"data must be bytes-like, got {type(data).__name__}")
+    if HAS_NATIVE_CORE and hasattr(_core, "ed25519_verify"):
+        try:
+            _core.ed25519_verify(bytes(public_key_bytes), bytes(signature), bytes(data))
+            return
+        except ValueError as exc:
+            raise_mapped_error(exc)
+    py_verify(public_key_bytes, signature, data)

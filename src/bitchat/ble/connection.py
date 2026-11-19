@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from bleak import BleakClient
 
+from bitchat._native import HAS_NATIVE_CORE, _core
 from bitchat.ble.gatt import GATTManager
 from bitchat.ble.models import BLEConnectionState
 from bitchat.exceptions import BLEConnectionError, BLEGATTError
@@ -44,6 +45,12 @@ class BLEConnection:
         self._characteristic: BleakGATTCharacteristic | None = None
         self._is_subscribed: bool = False
         self._lock = asyncio.Lock()
+        self._pending_notifications: list[bytes] = []
+        self._native_engine: Any | None = (
+            _core.NativeBleConnectionEngine(peer_address, 185, 32)
+            if HAS_NATIVE_CORE and hasattr(_core, "NativeBleConnectionEngine")
+            else None
+        )
 
     @property
     def state(self) -> BLEConnectionState:
@@ -68,6 +75,9 @@ class BLEConnection:
         self._state = BLEConnectionState.DISCONNECTED
         self._characteristic = None
         self._is_subscribed = False
+        self._pending_notifications.clear()
+        if self._native_engine is not None:
+            self._native_engine.set_state("disconnected")
 
         if self.disconnected_callback:
             try:
@@ -75,19 +85,7 @@ class BLEConnection:
             except Exception as e:
                 logger.warning("Error in disconnected_callback: %s", e)
 
-    def _raw_notification_handler(
-        self, _char: BleakGATTCharacteristic, data: bytearray | bytes
-    ) -> None:
-        """Process incoming raw notification data from the characteristic."""
-        if self._state != BLEConnectionState.READY:
-            logger.debug(
-                "Ignored notification received while in state %s from %s",
-                self._state,
-                self.peer_address,
-            )
-            return
-
-        raw_bytes = bytes(data)
+    def _dispatch_notification_bytes(self, raw_bytes: bytes) -> None:
         if self.notification_callback:
             try:
                 self.notification_callback(raw_bytes)
@@ -98,6 +96,35 @@ class BLEConnection:
                     e,
                     exc_info=True,
                 )
+
+    def _raw_notification_handler(
+        self, _char: BleakGATTCharacteristic, data: bytearray | bytes
+    ) -> None:
+        """Process incoming raw notification data from the characteristic."""
+        raw_bytes = bytes(data)
+        if self._state == BLEConnectionState.SUBSCRIBING:
+            if self._native_engine is not None:
+                self._native_engine.set_state("subscribing")
+                self._native_engine.on_notification(raw_bytes)
+            else:
+                if len(self._pending_notifications) < 64:
+                    self._pending_notifications.append(raw_bytes)
+            logger.debug(
+                "Buffered early notification during SUBSCRIBING from %s (%d bytes)",
+                self.peer_address,
+                len(raw_bytes),
+            )
+            return
+
+        if self._state != BLEConnectionState.READY:
+            logger.debug(
+                "Ignored notification received while in state %s from %s",
+                self._state,
+                self.peer_address,
+            )
+            return
+
+        self._dispatch_notification_bytes(raw_bytes)
 
     async def connect(self) -> None:
         """Establish BLE connection, discover BitChat GATT, and subscribe."""
@@ -136,6 +163,8 @@ class BLEConnection:
                 self._characteristic = characteristic
 
                 self._state = BLEConnectionState.SUBSCRIBING
+                if self._native_engine is not None:
+                    self._native_engine.set_state("subscribing")
                 logger.info("Subscribing to notifications on %s", self.peer_address)
                 await client.start_notify(
                     characteristic, self._raw_notification_handler
@@ -144,6 +173,15 @@ class BLEConnection:
 
                 self._state = BLEConnectionState.READY
                 logger.info("BLE peer %s is ready for communication", self.peer_address)
+                if self._native_engine is not None:
+                    buffered = [
+                        bytes(b) for b in self._native_engine.mark_ready_and_drain()
+                    ]
+                else:
+                    buffered = list(self._pending_notifications)
+                    self._pending_notifications.clear()
+                for early_frame in buffered:
+                    self._dispatch_notification_bytes(early_frame)
 
             except Exception as e:
                 logger.warning(

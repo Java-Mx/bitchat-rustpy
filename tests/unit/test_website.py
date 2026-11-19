@@ -138,25 +138,25 @@ def test_html_parsing_and_internal_references():
 
 
 def test_releases_json_schema_and_checksum_consistency():
-    """Verify that releases.json contains accurate v0.3.1 data and SHA-256 hashes."""
+    """Verify that releases.json contains accurate v0.3.2 data and SHA-256 hashes."""
     data_path = WEBSITE_DIR / "assets" / "data" / "releases.json"
     assert data_path.is_file()
 
     with open(data_path, encoding="utf-8") as f:
         data = json.load(f)
 
-    assert data["version"] == "0.3.1"
-    assert data["release_tag"] == "v0.3.1"
+    assert data["version"] == "0.3.2"
+    assert data["release_tag"] == "v0.3.2"
     assert len(data["packages"]) >= 7
 
     # Ensure windows installer checksum matches the official hash
     win_pkg = next(p for p in data["packages"] if p["id"] == "win-exe")
-    assert win_pkg["filename"] == "BitChat-0.3.1-windows-x64.exe"
+    assert win_pkg["filename"] == "BitChat-0.3.2-windows-x64.exe"
     assert (
         win_pkg["sha256"]
-        == "2A2D68F5B7B975620AF7197030A6DD068C8A0D096AEEECFC69F5DBB3FA84A75A"
+        == "4FEE6B1D4464FFEFD92DBD3CD342C848FED82A29E718AB9B34FB5B6ADE5EB768"
     )
-    assert win_pkg["size_bytes"] == 18165765
+    assert win_pkg["size_bytes"] == 19423125
 
 
 def test_sitemap_xml_validity():

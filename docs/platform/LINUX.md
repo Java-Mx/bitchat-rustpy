@@ -123,3 +123,33 @@ bitchat --configure
 - **Interfaces:** `network`, `network-bind`, `bluez`.
 - **Evaluation:** Because `bluez` requires manual store assertion or manual user connection (`sudo snap connect bitchat:bluez`), Snap is maintained as a documented secondary target.
 - **Manifest:** [`packaging/linux/snap/snapcraft.yaml`](../../packaging/linux/snap/snapcraft.yaml).
+
+### 5. Fedora KDE & Red Hat Enterprise Linux / CentOS
+- **Target:** Fedora 39+, Fedora KDE Spin, RHEL 9+, CentOS Stream.
+- **Native Installation & Dependencies:**
+  ```bash
+  sudo dnf install -y bluez bluez-libs-devel python3-dbus-fast gcc
+  sudo systemctl enable --now bluetooth
+  sudo usermod -aG bluetooth $USER
+  ```
+- **Firewalld Configuration:**
+  ```bash
+  sudo firewall-cmd --add-port=41234/udp --permanent
+  sudo firewall-cmd --add-port=41235/tcp --permanent
+  sudo firewall-cmd --reload
+  ```
+- **Portable Packages:** Universal `.AppImage` or sandboxed Flatpak (`io.github.java_mx.bitchat`).
+
+### 6. Arch Linux (`bitchat-rustpy`)
+- **Target:** Arch Linux, Manjaro, EndeavourOS.
+- **PKGBUILD Location:** [`packaging/linux/arch/PKGBUILD`](../../packaging/linux/arch/PKGBUILD).
+- **Dependencies:** `bluez`, `bluez-utils`, `dbus`, `gcc-libs`, `glibc`, `python>=3.12`.
+- **Building & Installing:**
+  ```bash
+  cd packaging/linux/arch
+  makepkg -si
+  ```
+- **BlueZ Service Activation:**
+  ```bash
+  sudo systemctl enable --now bluetooth
+  ```

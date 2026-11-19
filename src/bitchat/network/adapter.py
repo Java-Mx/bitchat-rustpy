@@ -12,6 +12,7 @@ import time
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
+from bitchat._native import HAS_NATIVE_CORE, _core
 from bitchat.network.models import NetworkInfo
 from bitchat.network.provider import discover_network_info
 
@@ -95,16 +96,43 @@ def clear_network_info_snapshot_cache() -> None:
 
 def get_local_ip() -> str:
     """Detect the primary usable IPv4 address on the local network."""
-    # Attempt 1: Route probe to arbitrary LAN broadcast address
-    for target in (("10.255.255.255", 1), ("192.168.255.255", 1), ("8.8.8.8", 80)):
+    if _network_snapshot is not None and _network_snapshot.interfaces:
+        if HAS_NATIVE_CORE and hasattr(_core, "select_best_lan_ip"):
+            iface_tuples: list[tuple[str, str, int, bool]] = []
+            for iface in _network_snapshot.interfaces:
+                is_up = iface.operational_state.lower() in {"up", "connected"}
+                prefix = iface.subnet_prefixes[0] if iface.subnet_prefixes else 24
+                for ipv4 in iface.ipv4_addresses:
+                    iface_tuples.append((iface.name, ipv4, int(prefix), is_up))
+            if iface_tuples:
+                best = _core.select_best_lan_ip(iface_tuples)
+                if best and not best.startswith("127."):
+                    return best
+        if _network_snapshot.local_ip and not _network_snapshot.local_ip.startswith(
+            "127."
+        ):
+            return _network_snapshot.local_ip
+
+    # Attempt 1: Route probe to default gateway / LAN broadcast addresses
+    candidates: list[tuple[str, str, int, bool]] = []
+    for idx, target in enumerate(
+        (("192.168.255.255", 1), ("8.8.8.8", 80), ("10.255.255.255", 1))
+    ):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
                 s.connect(target)
                 ip = s.getsockname()[0]
                 if ip and not ip.startswith("127."):
-                    return ip
+                    candidates.append((f"probe_{idx}", ip, 24, True))
         except Exception:
             continue
+
+    if candidates:
+        if HAS_NATIVE_CORE and hasattr(_core, "select_best_lan_ip"):
+            best = _core.select_best_lan_ip(candidates)
+            if best and not best.startswith("127."):
+                return best
+        return candidates[0][1]
 
     # Attempt 2: Resolve hostname addresses
     try:
@@ -117,6 +145,38 @@ def get_local_ip() -> str:
         pass
 
     return ""
+
+
+def get_broadcast_targets() -> list[str]:
+    """Compute directed subnet broadcast and global broadcast targets for LAN."""
+    iface_tuples: list[tuple[str, str, int, bool]] = []
+    if _network_snapshot is not None and _network_snapshot.interfaces:
+        for iface in _network_snapshot.interfaces:
+            is_up = iface.operational_state.lower() in {"up", "connected"}
+            for i, ipv4 in enumerate(iface.ipv4_addresses):
+                prefix = (
+                    iface.subnet_prefixes[i]
+                    if i < len(iface.subnet_prefixes)
+                    else (iface.subnet_prefixes[0] if iface.subnet_prefixes else 24)
+                )
+                iface_tuples.append((iface.name, ipv4, int(prefix), is_up))
+
+    local_ip = get_local_ip()
+    if local_ip and not local_ip.startswith("127."):
+        iface_tuples.append(("primary", local_ip, 24, True))
+
+    if HAS_NATIVE_CORE and hasattr(_core, "compute_broadcast_targets") and iface_tuples:
+        targets = list(_core.compute_broadcast_targets(iface_tuples))
+        if "255.255.255.255" not in targets:
+            targets.append("255.255.255.255")
+        return targets
+
+    targets = ["255.255.255.255"]
+    if local_ip and not local_ip.startswith("127."):
+        parts = local_ip.split(".")
+        if len(parts) == 4:
+            targets.append(f"{parts[0]}.{parts[1]}.{parts[2]}.255")
+    return list(dict.fromkeys(targets))
 
 
 def get_all_local_ips() -> set[str]:

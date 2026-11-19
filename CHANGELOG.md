@@ -5,7 +5,32 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.2] - 2026-11-19
+
+### Added
+- **Native Rust Cryptography (`rust/bitchat-core/src/crypto.rs`):** Implemented audited Rust cryptographic primitives using `x25519-dalek` (2.0 with low-order Curve25519 point rejection), `ed25519-dalek` (2.1 with constant-time verification), `chacha20poly1305` (0.10 AEAD), `aes-gcm` (0.10 channel encryption), `hkdf` (0.12), `hmac` (0.12), `sha2` (0.10), and `pbkdf2` (0.12 with 100,000-iteration key derivation).
+- **Native Rust Noise XX Session Engine (`rust/bitchat-core/src/noise.rs`):** Implemented the full `Noise_XX_25519_ChaChaPoly_SHA256` state machine (`NativeNoiseHandshakeState`, `NativeNoiseSymmetricState`, `NativeNoiseCipherState`, `NativeNoiseSession`) with strict `zeroize::ZeroizeOnDrop` memory scrubbing for static private keys, ephemeral handshake keys, chaining keys, and transport keys.
+- **Deterministic 12-Phase Handshake State Machine (`rust/bitchat-core/src/noise.rs`):** Implemented `NativeHandshakeStateMachine` tracking explicit observable stages (`Discovered`, `Connecting`, `TransportConnected`, `GattReady`, `HandshakeInitiated`, `AwaitingMessage2`, `AwaitingMessage3`, `AuthenticatingIdentity`, `Established`, `Failed`, `Closing`, `Closed`) with redacted diagnostic reporting.
+- **Replay Protection & Nonce Boundary Enforcement:** Implemented a bounded 1,024-entry sliding replay window in `NativeNoiseCipherState` protecting all wire nonces including wire nonce `0`.
+- **Native Mesh Routing, Store-and-Forward & Ack Tracking (`rust/bitchat-core/src/mesh.rs`):** Implemented single-pass `NativeMeshRouter`, `NativeStoreAndForwardQueue`, and `NativeAckTracker` eliminating repetitive Python/Rust FFI crossings during multi-hop forwarding.
+- **Native LAN Transport Engine Foundation (`rust/bitchat-core/src/lan.rs`):** Implemented `encode_discovery_packet_raw`, `decode_discovery_packet_raw`, `select_best_lan_ip` (scoring physical Wi-Fi/Ethernet adapters above virtual WSL/Docker/VPN adapters), `compute_subnet_broadcast`, `compute_broadcast_targets`, `arbitrate_simultaneous_connection`, `NativeIpRateLimiter`, and Tokio asynchronous TCP/UDP streaming helpers.
+- **Native BLE Connection Engine Foundation (`rust/bitchat-core/src/ble.rs`):** Implemented `NativeBleConnectionEngine` with pre-ready notification queueing during `SUBSCRIBING`, `compute_ble_write_chunk_size` (dynamically adapting to controller MTU), and `encode_ble_manufacturer_payload` / `decode_ble_manufacturer_payload` supporting backward-compatible 8-byte peer ID advertisement extensions.
+- **WinGet Manifests for v0.3.2 (`manifests/j/Java-Mx/BitChat/0.3.2/`):** Generated and validated official multi-file WinGet manifests for package `Java-Mx.BitChat` with moniker `bitchat-rustpy`.
+
+### Fixed
+- **LAN Multi-Interface Selection Failure:** Fixed cross-machine discovery failure between Windows and Linux machines by scoring physical network adapters above virtual WSL/Hyper-V/Docker/VPN interfaces.
+- **Dynamic Bound TCP Port Mismatch:** Fixed discovery packet serialization to query and advertise the actual bound TCP listener port instead of assuming default port 41235.
+- **Subnet-Directed UDP Discovery Beacons:** Replaced global-only broadcast with per-adapter directed subnet broadcasts, overcoming Wi-Fi AP client isolation.
+- **Stranded Messages on Session Failure:** Fixed `SessionCoordinator.send_direct_message` to detect failed and stale handshaking sessions, cancel stale timers, reset state safely, and re-initiate handshakes without stranding queued direct messages.
+- **Dropped Inbound Handshake Retries:** Fixed `SessionCoordinator._process_packet_async` to automatically reset responder sessions in `FAILED` state upon receiving valid `NoiseHandshakeInit` packets.
+- **Simultaneous Handshake Contention:** Resolved race conditions when both peers initiate handshakes simultaneously by implementing deterministic canonical role tie-breaking (`local_peer_id < remote_peer_id`).
+- **BLE Notification Subscription Race:** Prevented dropped Message 2 notifications by buffering inbound notifications in `NativeBleConnectionEngine` during the `SUBSCRIBING` state and draining them upon reaching `READY`.
+- **BLE GATT Server Client Tracking:** Preserved inbound GATT server client registrations in `BluetoothTransport._server_clients` and included them in `connected_peers`.
+- **MTU-Aware BLE Writes:** Clamped BLE GATT writes dynamically according to negotiated controller MTU to prevent packet truncation or OS GATT errors.
+
+### Security
+- **Native Memory Scrubbing:** Protected all secret key material via `zeroize::ZeroizeOnDrop` in native Rust so private keys, nonces, and shared secrets do not reside in unzeroized Python memory.
+- **Fail-Closed Authentication:** Guaranteed fail-closed behavior on decryption errors, static identity mismatch, or replay violations across both native Rust and Python fallbacks.
 
 ## [0.3.1] - 2026-11-09
 

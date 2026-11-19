@@ -1,19 +1,21 @@
 # BitChat Architecture & Rust Migration Roadmap
 
-This document defines the multi-stage engineering roadmap for **BitChat**, tracking its progression from a pure-Python application (`v0.1.0`–`v0.2.1`) through the current hybrid Python + Rust architecture (`v0.3.1`) toward a fully native Rust application.
+This document defines the multi-stage engineering roadmap for **BitChat**, tracking its progression from a pure-Python application (`v0.1.0`–`v0.2.1`) through the current hybrid Python + Rust architecture (`v0.3.2`) toward a fully native Rust application.
 
-> **Engineering Policy:** This roadmap describes architectural stages and technical milestones without promising calendar release dates. Only **Stage 1** is implemented in `v0.3.1`; Stages 2 through 7 are planned future engineering phases.
+> **Engineering Policy:** This roadmap describes architectural stages and technical milestones without promising calendar release dates. Stages 1 and 2 (including Rust Cryptography, Noise XX, and the deterministic 12-phase Handshake State Machine) along with native foundations for Stages 3–5 (Mesh Router, LAN Discovery/Framing, BLE Connection Engine) are implemented in `rust/bitchat-core` (`bitchat._bitchat_core`) for `v0.3.2`. The next upcoming milestone is **Phase 2.2 (`v0.3.3`)**, focusing on cross-implementation interoperability and legacy identity compatibility. Stages 6 and 7 remain planned future engineering phases.
 
 ---
 
 ## 1. Strategic Architectural Direction
 
-| Milestone Phase | Architectural Ownership | Status |
-| :--- | :--- | :--- |
-| **Legacy Baseline (`v0.1.0`–`v0.2.1`)** | 100% Python (`asyncio` + `Textual` + pure-Python protocol/mesh) | Superseded |
-| **Current Release (`v0.3.1` — Stage 1)** | **Hybrid Python Application + Rust Native Core (`bitchat._bitchat_core`, ~25% Rust hot-path ownership)** | ✅ **Completed & Released (`v0.3.1`)** |
-| **Intermediate Milestone (Stages 2–5)** | **~60% Rust Architectural Ownership** (Protocol, Mesh, Crypto, Noise XX, and Transport engines in Rust; Python TUI/CLI shell) | 📋 Planned |
-| **Final Objective (Stages 6–7)** | **100% Native Rust Application** (Rust TUI, CLI, Transports, Storage, Crypto, and Protocol; Python, PyO3, and Maturin removed) | 📋 Planned |
+| Milestone Phase | Architectural Ownership | Status | Target Release |
+| :--- | :--- | :--- | :--- |
+| **Legacy Baseline (`v0.1.0`–`v0.2.1`)** | 100% Python (`asyncio` + `Textual` + pure-Python protocol/mesh) | Superseded | `v0.1.0`–`v0.2.1` |
+| **Stage 1 Baseline (`v0.3.1`)** | **Hybrid Python Application + Rust Native Core (`bitchat._bitchat_core`, ~25% Rust hot-path ownership)** | ✅ **Completed** | `v0.3.1` |
+| **Phase 2 Milestone (`v0.3.2`)** | **Native Rust Cryptography, Noise XX Engine & Transport Foundations (~50% Rust ownership)** (X25519, Ed25519, AEAD, HKDF, PBKDF2, Zeroize, 12-phase FSM, LAN scoring, BLE buffering) | ✅ **Completed** | `v0.3.2` |
+| **Phase 2.2 Milestone (`v0.3.3`)** | **Cross-Implementation Interoperability & Security Hardening** (Reference TUI interoperability, legacy peer-ID compatibility, controller buffer limits, deep network diagnostics) | 📋 **Next Milestone** | `v0.3.3` |
+| **Stages 3–5 Full Migration** | **~60% Rust Architectural Ownership** (Full native Tokio LAN transport, native BlueZ/WinRT BLE drivers, native mesh routing) | 📋 Planned | `v0.4.0` |
+| **Final Objective (Stages 6–7)** | **100% Native Rust Application** (Rust TUI, CLI, Transports, Storage, Crypto, and Protocol; Python, PyO3, and Maturin removed) | 📋 Planned | `v1.0.0` |
 
 ---
 
@@ -51,32 +53,33 @@ Implemented in `rust/bitchat-core` (`bitchat._bitchat_core`) and integrated via 
 
 ---
 
-### Stage 2 — Rust Cryptography & Noise XX Session Engine (📋 Planned)
+### Stage 2 — Rust Cryptography & Noise XX Session Engine (✅ Implemented in `rust/bitchat-core`)
 
-- Migrate `X25519`, `Ed25519`, `ChaCha20-Poly1305`, `AES-256-GCM`, `HKDF-SHA256`, and `PBKDF2-HMAC-SHA256` to audited Rust crates (`x25519-dalek`, `ed25519-dalek`, `chacha20poly1305`, `aes-gcm`, `hkdf`, `pbkdf2`, `sha2`).
-- Implement the full `Noise_XX_25519_ChaChaPoly_SHA256` handshake and transport `CipherState` machine in `rust/bitchat-core`.
-- Enforce deterministic memory scrubbing (`zeroize::ZeroizeOnDrop`) for static private keys, ephemeral handshake keys, and symmetric session keys so secret material never resides in unzeroized Python `bytes` objects.
-- Maintain 100% wire compatibility and differential test parity against `src/bitchat/crypto/`.
-
----
-
-### Stage 3 — Rust Mesh Routing Table & Multi-Hop Scheduler (📋 Planned)
-
-- Migrate `MeshRouter` (`src/bitchat/mesh/router.py`), peer table management, hop-count decrementing, broadcast flood control, and retry scheduling into `rust/bitchat-core`.
-- Unify packet decoding, deduplication, reassembly, Noise decryption, and forwarding decisions inside a single Rust pipeline call to eliminate repeated Python/Rust boundary crossings per packet.
+- Implemented `X25519`, `Ed25519`, `ChaCha20-Poly1305`, `AES-256-GCM`, `HKDF-SHA256`, and `PBKDF2-HMAC-SHA256` in `rust/bitchat-core/src/crypto.rs` and `noise.rs` using audited Rust crates (`x25519-dalek`, `ed25519-dalek`, `chacha20poly1305`, `aes-gcm`, `hkdf`, `hmac`, `pbkdf2`, `sha2`, `zeroize`).
+- Implemented the full `Noise_XX_25519_ChaChaPoly_SHA256` handshake (`NativeNoiseHandshakeState`, `NativeNoiseSymmetricState`), transport `NativeNoiseCipherState` (with 1,024-entry sliding replay window and wire nonce 0 replay protection), `NativeNoiseSession`, and the 12-phase deterministic `NativeHandshakeStateMachine`.
+- Enforced deterministic memory scrubbing (`zeroize::Zeroize`) on drop for static private keys, ephemeral handshake keys, chaining keys, and symmetric session keys.
+- Verified 100% wire compatibility and byte-for-byte differential test parity against `src/bitchat/crypto/` (`tests/unit/test_native_core.py`).
 
 ---
 
-### Stage 4 — Native Rust LAN Transport Engine (📋 Planned)
+### Stage 3 — Rust Mesh Routing Table & Multi-Hop Scheduler (✅ Implemented in `rust/bitchat-core`)
 
-- Migrate `LANDiscovery` (UDP broadcast beacons on port `41234`, per-IP rate limiting), `LANServer` / `LANConnection` (4-byte length-prefixed TCP streams on port `41235`), and network interface snapshot detection into an asynchronous Rust (`tokio`) transport engine inside `rust/bitchat-core`.
+- Implemented `NativeMeshRouter`, `NativeStoreAndForwardQueue`, and `NativeAckTracker` in `rust/bitchat-core/src/mesh.rs`, integrated with `src/bitchat/mesh/router.py` and `src/bitchat/mesh/store_forward.py`.
+- Unified loop prevention, per-peer rate limiting, TTL validation, SHA-256 deduplication, route learning, destination evaluation, and TTL clamping/decrementing inside a single native Rust pass (`evaluate_incoming_raw`).
 
 ---
 
-### Stage 5 — Native Rust BLE Transport Engine (~60% Rust Milestone — 📋 Planned)
+### Stage 4 — Native Rust LAN Transport & Discovery Engine (✅ Implemented in `rust/bitchat-core`)
 
-- Migrate BLE Central scanning, GATT client connections, and BLE Peripheral GATT server advertising (`F47B5E2D-4A9E-4C5A-9B3F-8E1D2C3A4B5C` / `A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D`) from Python (`bleak` / `winrt` / `dbus-fast`) to native Rust platform backends (Windows WinRT and Linux BlueZ D-Bus).
-- Reaching Stage 5 completes the **~60% Rust intermediate architectural milestone**, where all networking, BLE radio management, cryptography, and mesh routing execute natively in Rust while Python hosts only the high-level application configuration and Textual UI.
+- Implemented `encode_discovery_packet_raw`, `decode_discovery_packet_raw`, `select_best_lan_ip` (scoring physical Wi-Fi/Ethernet interfaces above virtual WSL/Docker/VPN interfaces), `compute_subnet_broadcast`, `compute_broadcast_targets`, `arbitrate_simultaneous_connection`, `NativeIpRateLimiter`, and asynchronous `tokio` TCP/UDP frame exchange helpers in `rust/bitchat-core/src/lan.rs`.
+- Resolved cross-OS LAN handshake progression failures: unconnected discovered peer auto-connect on DM, inbound ephemeral TCP port mapping when `TTL < 7` or UDP discovery is asymmetric, multi-subnet directed UDP broadcast, and stale handshake recovery.
+
+---
+
+### Stage 5 — Native Rust BLE Transport State & Advertisement Engine (~60% Rust Milestone — ✅ Implemented in `rust/bitchat-core`)
+
+- Implemented `encode_ble_manufacturer_payload`, `decode_ble_manufacturer_payload` (supporting backward-compatible 8-byte `peer_id` advertisement extension), `compute_ble_write_chunk_size`, and `NativeBleConnectionEngine` (with pre-ready notification buffering during `SUBSCRIBING`) in `rust/bitchat-core/src/ble.rs`.
+- Fixed BLE discovery-to-handshake progression bugs across Windows WinRT and Linux BlueZ: preserved `BluetoothTransport._server_clients` registration on inbound GATT server writes, included active GATT server clients in `BluetoothTransport.connected_peers`, prevented duplicate `BluetoothTransport` callback hijacking in `SessionCoordinator`, and buffered early notifications during `SUBSCRIBING`.
 
 ---
 

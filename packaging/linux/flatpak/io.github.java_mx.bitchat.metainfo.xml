@@ -28,6 +28,11 @@
     <binary>bitchat</binary>
   </provides>
   <releases>
+    <release version="0.3.2" date="2026-11-19">
+      <description>
+        <p>Phase 2 release: Native Rust cryptography (X25519, Ed25519, ChaCha20-Poly1305, AES-256-GCM, HKDF, PBKDF2), Noise XX session engine with zeroize memory scrubbing, deterministic 12-phase handshake state machine, and LAN/BLE connection reliability fixes.</p>
+      </description>
+    </release>
     <release version="0.3.1" date="2026-11-09">
       <description>
         <p>Phase 1 release: Rust/PyO3/Maturin native core acceleration (_bitchat_core), Textual UI in-place rendering and event-loop optimizations, and complete cross-platform uninstaller.</p>

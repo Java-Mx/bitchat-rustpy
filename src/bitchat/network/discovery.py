@@ -11,7 +11,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 from bitchat.crypto.identity import generate_instance_id
-from bitchat.network.adapter import get_local_ip, is_local_ip
+from bitchat.network.adapter import get_broadcast_targets, get_local_ip, is_local_ip
 from bitchat.network.models import DiscoveryPacket, LANDiscoveredPeer
 
 if TYPE_CHECKING:
@@ -181,12 +181,16 @@ class LANDiscovery:
             )
             raw = beacon.to_bytes()
             loop = asyncio.get_running_loop()
-            targets = ["255.255.255.255"]
+            targets = list(get_broadcast_targets())
             local_ip = get_local_ip()
             if local_ip and not local_ip.startswith("127."):
                 parts = local_ip.split(".")
                 if len(parts) == 4:
-                    targets.append(f"{parts[0]}.{parts[1]}.{parts[2]}.255")
+                    bcast24 = f"{parts[0]}.{parts[1]}.{parts[2]}.255"
+                    if bcast24 not in targets:
+                        targets.append(bcast24)
+            if "255.255.255.255" not in targets:
+                targets.append("255.255.255.255")
             sent = 0
             for target_ip in dict.fromkeys(targets):
                 try:

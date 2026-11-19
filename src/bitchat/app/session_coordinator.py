@@ -8,7 +8,11 @@ import logging
 from time import perf_counter
 from typing import TYPE_CHECKING, Any
 
-from bitchat.crypto.noise import NoiseRole, NoiseSessionState
+from bitchat.crypto.noise import (
+    NoiseRole,
+    NoiseSessionState,
+    ObservableSessionPhase,
+)
 from bitchat.crypto.sessions import NoiseSession
 from bitchat.exceptions import (
     FragmentLimitExceededError,
@@ -137,7 +141,11 @@ class SessionCoordinator:
         self.ble_manager: Any = ble_manager
         self.ble_server: Any = ble_server
 
-        if ble_manager is not None and ble_server is not None:
+        if (
+            ble_manager is not None
+            and ble_server is not None
+            and not isinstance(transport, BluetoothTransport)
+        ):
             bt_transport = BluetoothTransport(
                 ble_manager=ble_manager,
                 ble_server=ble_server,
@@ -538,7 +546,107 @@ class SessionCoordinator:
             ]
             for transport, history in self.transport_diagnostics.items()
         }
+        telem["session_diagnostics"] = self.get_connection_diagnostics_report().get(
+            "sessions", []
+        )
         return telem
+
+    def get_connection_diagnostics_report(
+        self, peer_id_hex: str | None = None
+    ) -> dict[str, Any]:
+        """Return an exportable, secret-redacted connection diagnostics report."""
+        transport_label = (
+            "ble" if self.effective_active_transport_name == "bluetooth" else "lan"
+        )
+        connected = set(self.active_transport.connected_peers)
+        sessions_list: list[dict[str, Any]] = []
+
+        target_pids = (
+            [peer_id_hex.lower()]
+            if peer_id_hex
+            else sorted(
+                set(self._sessions.keys())
+                | set(self.peer_addresses.keys())
+                | set(self.address_to_peer_id.values())
+            )
+        )
+        for pid in target_pids:
+            session = self._sessions.get(pid)
+            endpoint = self.peer_addresses.get(pid, "unknown")
+            is_inbound = (
+                isinstance(self.active_transport, LANTransport)
+                and endpoint in connected
+                and self.active_transport.is_inbound_connection(endpoint)
+            )
+            direction = "inbound" if is_inbound else "outbound"
+            phase = (
+                session.observable_phase.value
+                if session is not None
+                else ("TransportConnected" if endpoint in connected else "Discovered")
+            )
+            stage_map = {
+                "Discovered": "discovery",
+                "Connecting": "connect",
+                "TransportConnected": "connect",
+                "GattReady": "gatt",
+                "HandshakeInitiated": "handshake_msg1",
+                "AwaitingMessage2": "handshake_msg2",
+                "AwaitingMessage3": "handshake_msg3",
+                "AuthenticatingIdentity": "auth",
+                "Established": "transport",
+                "Failed": "auth",
+                "Closing": "transport",
+                "Closed": "transport",
+            }
+            stage = stage_map.get(phase, "discovery")
+            history = session.phase_history() if session is not None else []
+            state_before = history[-2][0] if len(history) >= 2 else phase
+            state_after = phase
+            reason = (
+                session.diagnostic_reason
+                if session is not None
+                else (
+                    "Transport link active"
+                    if endpoint in connected
+                    else "Peer discovered"
+                )
+            )
+            remediation = "None required"
+            if phase in ("AwaitingMessage2", "AwaitingMessage3", "HandshakeInitiated"):
+                remediation = (
+                    "Check firewall rules for TCP port 41235 / UDP port 41234 (LAN) "
+                    "or verify BLE GATT notification subscription readiness."
+                )
+            elif phase == "Failed":
+                remediation = (
+                    "Verify remote peer identity fingerprint (TOFU) "
+                    "and retry connection."
+                )
+            sessions_list.append(
+                {
+                    "transport": transport_label,
+                    "direction": direction,
+                    "stage": stage,
+                    "peer_id": f"{pid[:8]}..." if len(pid) > 8 else pid,
+                    "endpoint": endpoint,
+                    "state_before": state_before,
+                    "state_after": state_after,
+                    "session_state": (
+                        session.state.value if session is not None else "uninitialized"
+                    ),
+                    "error_kind": (reason if phase == "Failed" else None),
+                    "os_error_code": None,
+                    "hresult": None,
+                    "remediation_hint": remediation,
+                }
+            )
+
+        return {
+            "active_transport": self.effective_active_transport_name,
+            "local_peer_id": f"{self.local_identity.peer_id_hex[:8]}...",
+            "pending_handshakes_count": self.pending_handshakes_count,
+            "sessions": sessions_list,
+        }
 
     def _record_transport_diagnostic(
         self, event: TransportError | TransportWarning
@@ -1541,7 +1649,19 @@ class SessionCoordinator:
 
         if not session.is_established:
             self._pending_messages.setdefault(target_peer_id_hex, []).append(text)
-            if session.state == NoiseSessionState.UNINITIALIZED:
+            is_stale_handshaking = (
+                session.state == NoiseSessionState.HANDSHAKING
+                and session._handshake_started_at is not None
+                and (perf_counter() - session._handshake_started_at) >= 2.0
+            )
+            if (
+                session.state
+                in (NoiseSessionState.UNINITIALIZED, NoiseSessionState.FAILED)
+                or is_stale_handshaking
+            ):
+                if session.state != NoiseSessionState.UNINITIALIZED:
+                    self._cancel_handshake_timeout(target_peer_id_hex)
+                    session.reset_for_rehandshake(session.role)
                 if session.role == NoiseRole.INITIATOR:
                     init_payload = session.start_handshake()
                     if init_payload is not None:
@@ -1554,6 +1674,11 @@ class SessionCoordinator:
                         )
                         await self._send_packet(target_peer_id_hex, packet)
                 else:
+                    session.record_phase(
+                        ObservableSessionPhase.HANDSHAKE_INITIATED,
+                        "Sent HandshakeRequest to initiator",
+                    )
+                    self._schedule_handshake_timeout(target_peer_id_hex, session)
                     req_packet = BitchatPacket.create(
                         message_type=MessageType.HandshakeRequest,
                         sender_id=self.local_identity.peer_id,
@@ -1607,6 +1732,22 @@ class SessionCoordinator:
             await self.active_transport.send_to_peer(target_addr, packet)
             return
 
+        if target_peer_id_hex:
+            discovered_addr = self.peer_addresses.get(
+                target_peer_id_hex
+            ) or self.resolve_peer_address(target_peer_id_hex)
+            if discovered_addr and discovered_addr != target_peer_id_hex:
+                try:
+                    await self.active_transport.send_to_peer(discovered_addr, packet)
+                    return
+                except Exception as e:
+                    logger.debug(
+                        "Direct send to discovered address %s failed (%s); "
+                        "falling back to broadcast",
+                        discovered_addr,
+                        e,
+                    )
+
         await self.active_transport.broadcast_packet(packet)
 
     async def _broadcast_packet(
@@ -1622,6 +1763,10 @@ class SessionCoordinator:
 
     def _handle_server_data_received(self, raw_bytes: bytes, client_id: str) -> None:
         """Process incoming raw bytes from GATT server write."""
+        if isinstance(self.active_transport, BluetoothTransport):
+            self.active_transport._handle_server_data(raw_bytes, client_id)
+            return
+
         try:
             packet = decode_packet(raw_bytes)
         except PacketDecodingError as e:
@@ -1750,14 +1895,19 @@ class SessionCoordinator:
             )
             return
         is_direct_neighbor = peer_address is not None and (
-            packet.sender_id.hex() == peer_address or packet.ttl >= MAX_TTL
+            packet.sender_id.hex() == peer_address
+            or packet.ttl >= MAX_TTL
+            or (
+                peer_address in self.active_transport.connected_peers
+                and peer_address not in self.address_to_peer_id
+            )
         )
         if peer_address and is_direct_neighbor:
             self.address_to_peer_id[peer_address] = sender_hex
             is_inbound_lan = isinstance(
                 self.active_transport, LANTransport
             ) and self.active_transport.is_inbound_connection(peer_address)
-            if not is_inbound_lan:
+            if not is_inbound_lan or sender_hex not in self.peer_addresses:
                 self.peer_addresses[sender_hex] = peer_address
 
         # Learn route to sender in mesh router
@@ -1815,10 +1965,19 @@ class SessionCoordinator:
                     return
 
                 session = self.get_or_create_session(sender_hex)
-                if (
-                    session.role == NoiseRole.INITIATOR
-                    and session.state == NoiseSessionState.UNINITIALIZED
+                is_stale_handshaking = (
+                    session.state == NoiseSessionState.HANDSHAKING
+                    and session._handshake_started_at is not None
+                    and (perf_counter() - session._handshake_started_at) >= 2.0
+                )
+                if session.role == NoiseRole.INITIATOR and (
+                    session.state
+                    in (NoiseSessionState.UNINITIALIZED, NoiseSessionState.FAILED)
+                    or is_stale_handshaking
                 ):
+                    if session.state != NoiseSessionState.UNINITIALIZED:
+                        self._cancel_handshake_timeout(sender_hex)
+                        session.reset_for_rehandshake(NoiseRole.INITIATOR)
                     init_payload = session.start_handshake()
                     if init_payload is not None:
                         self._schedule_handshake_timeout(sender_hex, session)
@@ -1849,6 +2008,44 @@ class SessionCoordinator:
                     return
 
                 session = self.get_or_create_session(sender_hex)
+                is_stale_handshaking = (
+                    session.state == NoiseSessionState.HANDSHAKING
+                    and session._handshake_started_at is not None
+                    and (perf_counter() - session._handshake_started_at) >= 2.0
+                )
+                local_is_canonical_initiator = (
+                    self.local_identity.peer_id_hex < sender_hex
+                )
+
+                if session.state == NoiseSessionState.FAILED:
+                    # Clean reset after prior handshake failure so remote init succeeds
+                    self._cancel_handshake_timeout(sender_hex)
+                    session.reset_for_rehandshake(NoiseRole.RESPONDER)
+                elif session.state == NoiseSessionState.UNINITIALIZED:
+                    if session.role == NoiseRole.INITIATOR:
+                        # Remote initiated directly before we started; act as Responder
+                        session.reset_for_rehandshake(NoiseRole.RESPONDER)
+                elif session.state == NoiseSessionState.HANDSHAKING:
+                    if not local_is_canonical_initiator:
+                        # Remote is lower ID and canonical initiator: local must yield
+                        self._cancel_handshake_timeout(sender_hex)
+                        session.reset_for_rehandshake(NoiseRole.RESPONDER)
+                    elif session.role == NoiseRole.RESPONDER:
+                        # Fresh Message 1 retry from initiator; reset responder
+                        self._cancel_handshake_timeout(sender_hex)
+                        session.reset_for_rehandshake(NoiseRole.RESPONDER)
+                    elif is_stale_handshaking:
+                        # Local was initiator but our earlier attempt was stale
+                        self._cancel_handshake_timeout(sender_hex)
+                        session.reset_for_rehandshake(NoiseRole.RESPONDER)
+                    else:
+                        # Local is canonical initiator with active handshake in flight.
+                        # Ignore simultaneous remote init; remote will yield to ours.
+                        logger.debug(
+                            "Ignoring simultaneous init from %s",
+                            sender_hex,
+                        )
+                        return
                 try:
                     resp_payload = session.process_handshake_message(packet.payload)
                 except Exception as e:

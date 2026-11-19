@@ -130,7 +130,14 @@ class BluetoothTransport(BaseTransport):
 
     @property
     def connected_peers(self) -> list[str]:
-        return self.ble_manager.connected_peers if self.ble_manager else []
+        peers: list[str] = (
+            list(self.ble_manager.connected_peers) if self.ble_manager else []
+        )
+        if self.ble_server and self.ble_server.is_advertising:
+            for client_addr in sorted(self._server_clients):
+                if client_addr and client_addr not in peers:
+                    peers.append(client_addr)
+        return peers
 
     @property
     def discovered_peers(self) -> dict[str, Any]:
@@ -171,14 +178,44 @@ class BluetoothTransport(BaseTransport):
 
     def _handle_server_client_subscribed(self, client_id: str) -> None:
         if client_id:
+            is_new = client_id not in self._server_clients
             self._server_clients.add(client_id)
+            if is_new:
+                self._set_state(TransportState.CONNECTED)
+                if self.on_peer_connected:
+                    with contextlib.suppress(Exception):
+                        self.on_peer_connected(client_id)
 
     def _handle_server_client_unsubscribed(self, client_id: str) -> None:
+        if (
+            client_id in ("bluez_client", "winrt_client", "client")
+            and self._server_clients
+        ):
+            disconnected = sorted(self._server_clients)
+            self._server_clients.clear()
+            for addr in disconnected:
+                if self.on_peer_disconnected:
+                    with contextlib.suppress(Exception):
+                        self.on_peer_disconnected(addr)
+            return
+        was_present = client_id in self._server_clients
         self._server_clients.discard(client_id)
+        if was_present and self.on_peer_disconnected:
+            with contextlib.suppress(Exception):
+                self.on_peer_disconnected(client_id)
 
     def _handle_server_data(self, data: bytes, client_address: str = "") -> None:
         if client_address:
+            if client_address not in ("bluez_client", "winrt_client", "client"):
+                for placeholder in ("bluez_client", "winrt_client", "client"):
+                    self._server_clients.discard(placeholder)
+            is_new = client_address not in self._server_clients
             self._server_clients.add(client_address)
+            if is_new:
+                self._set_state(TransportState.CONNECTED)
+                if self.on_peer_connected:
+                    with contextlib.suppress(Exception):
+                        self.on_peer_connected(client_address)
 
         try:
             packet = decode_packet(data)
@@ -717,7 +754,14 @@ class BluetoothTransport(BaseTransport):
             return
 
         if self.ble_manager:
-            await self.ble_manager.send_to_peer(address, packet)
+            try:
+                await self.ble_manager.send_to_peer(address, packet)
+            except Exception:
+                if address in self.discovered_peers:
+                    await self.connect_peer(address)
+                    await self.ble_manager.send_to_peer(address, packet)
+                else:
+                    raise
 
     async def broadcast_packet(
         self, packet: BitchatPacket, exclude_address: str | None = None

@@ -28,7 +28,7 @@
       <a href="index.html" class="brand-link" aria-label="BitChat RustPy Home">
         <img src="assets/img/brand/bitchat-icon-32.svg" alt="" class="brand-icon" />
         <span class="brand-title">BitChat RustPy</span>
-        <span class="brand-badge">v0.3.1</span>
+        <span class="brand-badge">v0.3.2</span>
       </a>
 
       <nav aria-label="Main Navigation">
@@ -130,12 +130,45 @@
         </div>
       </div>
 
-      <!-- Phase 2: In Progress -->
+      <!-- Phase 2: Completed -->
+      <div class="roadmap-phase-card">
+        <div class="phase-header">
+          <div>
+            <span class="phase-badge phase-completed">PHASE 2: COMPLETED (v0.3.2)</span>
+            <h2 style="font-size: 1.35rem; color: #ffffff; margin-top: 0.4rem;">Native Rust Cryptography, Noise XX Handshake &amp; Wire Foundations</h2>
+          </div>
+          <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--status-ok);">November 2026</span>
+        </div>
+        <p style="font-size: 0.925rem; color: var(--text-secondary);">
+          Implemented end-to-end Rust cryptographic primitives (ChaCha20-Poly1305, Ed25519, X25519, HKDF, PBKDF2), the full Noise XX mutual authentication handshake state machine, zeroizing in-memory secret key buffers, and native wire stream framing in <code>_bitchat_core</code>.
+        </p>
+
+        <div class="phase-items-grid">
+          <div class="phase-item">
+            <div class="phase-item-title">&check; Rust Cryptographic Primitives</div>
+            <div class="phase-item-desc">Hardware-accelerated ChaCha20-Poly1305, Ed25519 dalek, X25519, HKDF-SHA256, PBKDF2.</div>
+          </div>
+          <div class="phase-item">
+            <div class="phase-item-title">&check; Native Noise XX State Machine</div>
+            <div class="phase-item-desc">Mutual 3-message authentication, ephemeral DH keys, split transport cipher states.</div>
+          </div>
+          <div class="phase-item">
+            <div class="phase-item-title">&check; Zeroize Memory Security</div>
+            <div class="phase-item-desc">Automatic zeroing on drop for private keys, ephemeral secrets, and symmetric encryption keys.</div>
+          </div>
+          <div class="phase-item">
+            <div class="phase-item-title">&check; Wire Framing &amp; Replay Mitigation</div>
+            <div class="phase-item-desc">Standard 8-byte frame magic (BC\x01\x00) with bounded LRU replay protection.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 2.2: Next Milestone -->
       <div class="roadmap-phase-card active-phase">
         <div class="phase-header">
           <div>
-            <span class="phase-badge phase-progress">PHASE 2: IN PROGRESS (v0.4.x)</span>
-            <h2 style="font-size: 1.35rem; color: #ffffff; margin-top: 0.4rem;">Intermediate Migration: ~60% Rust Core Ownership</h2>
+            <span class="phase-badge phase-progress">PHASE 2.2: NEXT MILESTONE (v0.3.3)</span>
+            <h2 style="font-size: 1.35rem; color: #ffffff; margin-top: 0.4rem;">Rust Mesh Router, Peer State Engine &amp; Async Transports</h2>
           </div>
           <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent);">Q1 2027</span>
         </div>
@@ -149,8 +182,8 @@
             <div class="phase-item-desc">Move UDP discovery and TCP peer streams into native Tokio runtime threads.</div>
           </div>
           <div class="phase-item">
-            <div class="phase-item-title">&bull; Zero-Copy PyO3 Buffer Sharing</div>
-            <div class="phase-item-desc">Direct buffer views passing payloads between Rust core and Python UI without allocation.</div>
+            <div class="phase-item-title">&bull; Native Peer State Engine</div>
+            <div class="phase-item-desc">Dynamic peer presence, heartbeat timers, and routing tables managed in native Rust.</div>
           </div>
           <div class="phase-item">
             <div class="phase-item-title">&bull; Adaptive MTU &amp; BLE Reconnect Logic</div>
@@ -249,7 +282,7 @@
       <div class="footer-bottom">
         <div class="footer-status-indicator">
           <span class="status-dot"></span>
-          <span>Roadmap v0.3.1 &bull; Open-Source Engineering Milestone Tracking</span>
+          <span>Roadmap v0.3.2 &bull; Open-Source Engineering Milestone Tracking</span>
         </div>
         <div>
           &copy; 2026 Java-Mx &amp; BitChat Contributors.

@@ -1,6 +1,6 @@
 # BitChat Documentation Index
 
-Welcome to the central documentation index for **BitChat** (`v0.3.1`), a peer-to-peer encrypted terminal messenger powered by a hybrid Python and Rust (`bitchat._bitchat_core`) architecture over Bluetooth Low Energy (BLE) and Local Area Network (LAN) transports.
+Welcome to the central documentation index for **BitChat** (`v0.3.2`), a peer-to-peer encrypted terminal messenger powered by a hybrid Python and Rust (`bitchat._bitchat_core`) architecture over Bluetooth Low Energy (BLE) and Local Area Network (LAN) transports.
 
 ---
 
@@ -9,11 +9,11 @@ Welcome to the central documentation index for **BitChat** (`v0.3.1`), a peer-to
 | Document | Description |
 | :--- | :--- |
 | [`README.md`](../README.md) | Project overview, feature highlights, quick-start installation, TUI/CLI usage, and architecture summary. |
-| [`docs/DOWNLOAD.md`](DOWNLOAD.md) | Official download links, SHA-256 verification instructions, and package formats for `v0.3.1`. |
+| [`docs/DOWNLOAD.md`](DOWNLOAD.md) | Official download links, SHA-256 verification instructions, and package formats for `v0.3.2`. |
 | [`docs/UNINSTALLATION.md`](UNINSTALLATION.md) | Complete guide to uninstalling BitChat across Windows, Linux, and Python environments (`pip`, `uv`, `pipx`), including `PATH` cleanup and optional user-data removal. |
 | [`SUPPORT.md`](../SUPPORT.md) | Diagnostic commands (`bitchat --configure`), log file locations, troubleshooting steps, and how to get help. |
 | [`Screenshot.md`](../Screenshot.md) | Visual gallery of the BitChat Textual Terminal UI (Home Screen, Chat Screen, Settings, Connection Modal, Help). |
-| [`CHANGELOG.md`](../CHANGELOG.md) | Chronological release history and detailed changelog through `v0.3.1`. |
+| [`CHANGELOG.md`](../CHANGELOG.md) | Chronological release history and detailed changelog through `v0.3.2`. |
 
 ---
 
@@ -22,7 +22,7 @@ Welcome to the central documentation index for **BitChat** (`v0.3.1`), a peer-to
 | Document | Platform Status & Scope |
 | :--- | :--- |
 | [`docs/platform/WINDOWS.md`](platform/WINDOWS.md) | **First-Class Support (Windows 10/11 x64):** Standalone Inno Setup installer, WinGet, WinRT BLE Central/Peripheral requirements, Windows Firewall ports, startup management (`--startup`), and uninstallation. |
-| [`docs/platform/LINUX.md`](platform/LINUX.md) | **First-Class Support (Linux x86_64):** `.deb`, `AppImage`, `Flatpak`, BlueZ / D-Bus configuration, permissions (`bluetooth` group / capabilities), and firewall configuration. |
+| [`docs/platform/LINUX.md`](platform/LINUX.md) | **First-Class Support (Linux x86_64):** `.deb`, `AppImage`, `Flatpak`, Arch Linux `PKGBUILD`, BlueZ / D-Bus configuration, permissions (`bluetooth` group / capabilities), and firewall configuration. |
 | [`docs/platform/MACOS.md`](platform/MACOS.md) | **Experimental / Partial Support (macOS):** Source installation, LAN transport support, and current `CoreBluetooth` BLE Peripheral limitations. |
 
 ---
@@ -32,8 +32,8 @@ Welcome to the central documentation index for **BitChat** (`v0.3.1`), a peer-to
 | Document | Description |
 | :--- | :--- |
 | [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) | Hybrid Python + Rust (`bitchat._bitchat_core`) system architecture, layer boundaries, threading/asyncio model, and component design. |
-| [`docs/ROADMAP.md`](ROADMAP.md) | 7-stage engineering roadmap from the current hybrid Python/Rust core (`v0.3.1`) through the ~60% Rust milestone to a 100% native Rust application. |
-| [`docs/REQUIREMENTS.md`](REQUIREMENTS.md) | Functional (`FR-*`) and Non-Functional (`NFR-*`) requirements matrix with current `v0.3.1` implementation status. |
+| [`docs/ROADMAP.md`](ROADMAP.md) | 7-stage engineering roadmap from the current hybrid Python/Rust core (`v0.3.2`) through the ~60% Rust milestone to a 100% native Rust application. |
+| [`docs/REQUIREMENTS.md`](REQUIREMENTS.md) | Functional (`FR-*`) and Non-Functional (`NFR-*`) requirements matrix with current `v0.3.2` implementation status. |
 | [`docs/DEVELOPMENT.md`](DEVELOPMENT.md) | Developer environment setup (`uv`, Rust `cargo`, `maturin`), testing, linting, benchmarking, and debugging guide. |
 | [`docs/RELEASE_PROCESS.md`](RELEASE_PROCESS.md) | Release engineering workflow, version synchronization checklist, CI/CD pipelines, packaging scripts, and artifact verification. |
 
