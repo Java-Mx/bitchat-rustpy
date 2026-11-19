@@ -139,7 +139,7 @@
       "download_url": "https://github.com/Java-Mx/bitchat-rustpy/releases/download/v0.3.4/Java-Mx.BitChat.yaml",
       "primary": false,
       "install_command": "winget install bitchat-rustpy",
-      "description": "Official WinGet package manifest asset published with the v0.3.4 GitHub release (Java-Mx.BitChat / bitchat-rustpy)."
+      "description": "Official WinGet package manifest asset published with the v0.3.4 GitHub release (upstream submission microsoft/winget-pkgs#484273 pending Microsoft review/merge)."
     }
   ],
   "platform_support": {

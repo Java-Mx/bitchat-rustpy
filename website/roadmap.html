@@ -164,17 +164,17 @@
       </div>
 
       <!-- Phase 2.2: Completed -->
-      <div class="roadmap-phase-card active-phase">
+      <div class="roadmap-phase-card">
         <div class="phase-header">
           <div>
-            <span class="phase-badge phase-completed">PHASE 2.2: COMPLETED (v0.3.4)</span>
+            <span class="phase-badge phase-completed">PHASE 2.2: COMPLETED (v0.3.3)</span>
             <h2 style="font-size: 1.35rem; color: #ffffff; margin-top: 0.4rem;">Authoritative Rust Protocol Integration, Noise XX Interop &amp; Stage 3 Mesh Engine</h2>
           </div>
           <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--status-ok);">November 2026</span>
         </div>
         <p style="font-size: 0.925rem; color: var(--text-secondary);">
-          Made Rust the authoritative execution owner for Noise XX sessions, single-pass mesh routing, peer state management, collision-safe identity binding, and cohesive single-FFI protocol dispatch while retaining the Python Textual UI, asyncio LAN sockets, Bleak/WinRT/BlueZ BLE drivers, and differential reference suite.
-          <a href="https://github.com/Java-Mx/bitchat-rustpy/blob/main/docs/release/V0.3.4-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md" target="_blank" rel="noopener noreferrer">Read the v0.3.4 Rust Migration Impact Report &rarr;</a>
+          Made Rust the authoritative execution owner for Noise XX sessions, single-pass mesh routing, peer state management, collision-safe identity binding, and cohesive single-FFI protocol dispatch.
+          <a href="https://github.com/Java-Mx/bitchat-rustpy/blob/main/docs/release/V0.3.3-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md" target="_blank" rel="noopener noreferrer">Read the v0.3.3 Rust Migration Impact Report &rarr;</a>
         </p>
 
         <div class="phase-items-grid">
@@ -193,6 +193,40 @@
           <div class="phase-item">
             <div class="phase-item-title">&check; Single-Pass Mesh, LAN Rate Limiter &amp; BLE MTU Sizing</div>
             <div class="phase-item-desc">Eliminated duplicate Python/Rust mesh execution; wired NativeIpRateLimiter and controller ATT MTU write chunking.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 3: Completed -->
+      <div class="roadmap-phase-card active-phase">
+        <div class="phase-header">
+          <div>
+            <span class="phase-badge phase-completed">PHASE 3: COMPLETED (v0.3.4)</span>
+            <h2 style="font-size: 1.35rem; color: #ffffff; margin-top: 0.4rem;">Native Rust BLE Transport, Noise XX Interop, Live Bluetooth Diagnostics &amp; UI Stability</h2>
+          </div>
+          <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--status-ok);">November 2026</span>
+        </div>
+        <p style="font-size: 0.925rem; color: var(--text-secondary);">
+          Delivered the modular native Rust BLE transport stack across Windows WinRT, Linux BlueZ D-Bus (<code>zbus</code>), and macOS CoreBluetooth probing, decoupled Windows GATT/companion advertisement lifecycle, added <code>bitchat-tui</code> binary DM payload decoding, upgraded Bluetooth Settings diagnostics, and eliminated TUI mouse navigation jitter.
+          <a href="https://github.com/Java-Mx/bitchat-rustpy/blob/main/docs/release/PHASE-3-IMPLEMENTATION-AND-VERIFICATION-REPORT.md" target="_blank" rel="noopener noreferrer">Read the Phase 3 Verification Report &rarr;</a>
+        </p>
+
+        <div class="phase-items-grid">
+          <div class="phase-item">
+            <div class="phase-item-title">&check; Modular Native Rust BLE Backends</div>
+            <div class="phase-item-desc">Implemented <code>rust/bitchat-core/src/ble/</code> with GIL-free Windows WinRT (<code>windows 0.58</code>), Linux BlueZ D-Bus (<code>zbus 5</code>), and macOS CoreBluetooth probe backends.</div>
+          </div>
+          <div class="phase-item">
+            <div class="phase-item-title">&check; Decoupled Windows GATT &amp; Strict BLE Validation</div>
+            <div class="phase-item-desc">Companion manufacturer publisher failures no longer tear down active GATT services; enforced 8-byte peer IDs and strict GATT notify/write checks.</div>
+          </div>
+          <div class="phase-item">
+            <div class="phase-item-title">&check; bitchat-tui Binary DM Payload Interop</div>
+            <div class="phase-item-desc">Native Rust decoding for UTF-8, <code>[0x04]+UTF-8</code>, <code>[0x04]+BitchatMessage</code>, bare <code>BitchatMessage</code>, and nested <code>BitchatPacket</code> payloads with strict fail-closed Noise XX security.</div>
+          </div>
+          <div class="phase-item">
+            <div class="phase-item-title">&check; Live Bluetooth Diagnostics &amp; Mouse Jitter Fix</div>
+            <div class="phase-item-desc">Live async Bluetooth Settings telemetry with canonical BitChat UUIDs, plus single-dispatch StatusBar mouse clicks and flicker-free DataTable refreshes.</div>
           </div>
         </div>
       </div>

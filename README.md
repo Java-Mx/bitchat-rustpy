@@ -41,7 +41,7 @@
 <!-- Release & Distribution -->
 [![Release](https://img.shields.io/github/v/release/Java-Mx/bitchat-rustpy?display_name=tag&label=Release&color=10B981&style=flat-square)](https://github.com/Java-Mx/bitchat-rustpy/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/Java-Mx/bitchat-rustpy/total?label=Downloads&color=0EA5E9&style=flat-square)](https://github.com/Java-Mx/bitchat-rustpy/releases)
-[![WinGet](https://img.shields.io/badge/WinGet-v0.3.4%20PR%20Pending-D97706?style=flat-square)](https://github.com/microsoft/winget-pkgs/pull/483934)
+[![WinGet](https://img.shields.io/badge/WinGet-v0.3.4%20PR%20Pending-D97706?style=flat-square)](https://github.com/microsoft/winget-pkgs/pull/484273)
 [![License](https://img.shields.io/github/license/Java-Mx/bitchat-rustpy?label=License&color=2563EB&style=flat-square)](LICENSE)
 
 <!-- Repository & Community -->
@@ -135,7 +135,7 @@ BitChat provides dedicated distribution channels tailored for each platform:
 #### WinGet
 
 > [!NOTE]
-> **Status:** Published in Microsoft's official WinGet repository (`Java-Mx.BitChat`, initial `v0.1.0` merged in [microsoft/winget-pkgs#443445](https://github.com/microsoft/winget-pkgs/pull/443445); `v0.3.1` update with moniker `bitchat-rustpy` merged in [microsoft/winget-pkgs#481727](https://github.com/microsoft/winget-pkgs/pull/481727); **`v0.3.4` update submitted in [microsoft/winget-pkgs#483934](https://github.com/microsoft/winget-pkgs/pull/483934) — pending Microsoft validation & merge**). Until `#483934` merges and propagates, `winget` serves `0.3.1` or you can install `v0.3.4` directly via the GitHub Release installer or local manifest below.
+> **Status:** Published in Microsoft's official WinGet repository (`Java-Mx.BitChat`, initial `v0.1.0` merged in [microsoft/winget-pkgs#443445](https://github.com/microsoft/winget-pkgs/pull/443445); `v0.3.1` update with moniker `bitchat-rustpy` merged in [microsoft/winget-pkgs#481727](https://github.com/microsoft/winget-pkgs/pull/481727); `v0.3.3` merged in [microsoft/winget-pkgs#483934](https://github.com/microsoft/winget-pkgs/pull/483934); **`v0.3.4` update submitted in [microsoft/winget-pkgs#484273](https://github.com/microsoft/winget-pkgs/pull/484273) — pending Microsoft validation & merge**). Until `#484273` merges and propagates, `winget` serves `0.3.3` or you can install `v0.3.4` directly via the GitHub Release installer or local manifest below.
 > Official WinGet manifests are maintained and validated in the repository at [`manifests/j/Java-Mx/BitChat/0.3.4/`](manifests/j/Java-Mx/BitChat/0.3.4/).
 
 Install via Microsoft WinGet:
