@@ -250,10 +250,13 @@ class EditThemeModal(ModalScreen[None]):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         match event.button.id:
             case "btn-theme-apply":
+                event.stop()
                 self._apply_theme()
             case "btn-theme-cancel" | "btn-theme-close":
+                event.stop()
                 self._handle_cancel()
             case "btn-theme-reset":
+                event.stop()
                 self._restore_defaults()
 
     def _apply_theme(self) -> None:

@@ -178,8 +178,10 @@ class CommandsScreen(Screen[None]):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-commands-back":
+            event.stop()
             self.action_dismiss_screen()
         elif event.button.id == "btn-commands-chat":
+            event.stop()
             self.action_open_chat()
 
     def action_open_chat(self) -> None:

@@ -1070,12 +1070,16 @@ class TelemetryScreen(Screen[None]):
         bid = event.button.id or ""
         match bid:
             case "btn-telem-refresh":
+                event.stop()
                 await self.action_refresh_telemetry()
             case "btn-telem-retry-ble":
+                event.stop()
                 self.action_retry_ble()
             case "btn-telem-retry-lan":
+                event.stop()
                 self.action_retry_lan()
             case "btn-telem-back":
+                event.stop()
                 self.action_dismiss_screen()
 
     async def action_refresh_telemetry(self) -> None:

@@ -46,6 +46,7 @@ class HelpScreen(ModalScreen[None]):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "help-close-btn":
+            event.stop()
             self._dismiss_if_active()
 
     def action_dismiss_modal(self) -> None:

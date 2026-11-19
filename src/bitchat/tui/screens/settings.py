@@ -26,9 +26,14 @@ from textual.widgets import (
     Switch,
 )
 
+from bitchat._native import HAS_NATIVE_CORE, _core
 from bitchat.network.adapter import (
     get_cached_network_info_snapshot,
     get_network_info_snapshot,
+)
+from bitchat.protocol.constants import (
+    BITCHAT_CHARACTERISTIC_UUID,
+    BITCHAT_SERVICE_UUID,
 )
 from bitchat.storage.config import (
     DEFAULT_KEYBINDINGS,
@@ -40,6 +45,7 @@ from bitchat.storage.config import (
 logger = logging.getLogger(__name__)
 NETWORK_DIAGNOSTICS_TIMEOUT_SECONDS = 15.0
 NETWORK_SNAPSHOT_MAX_AGE_SECONDS = 30.0
+BLUETOOTH_DIAGNOSTICS_TIMEOUT_SECONDS = 8.0
 
 if TYPE_CHECKING:
     from textual import events
@@ -290,6 +296,11 @@ class SettingsScreen(ModalScreen[None]):
         self._network_info: Any | None = None
         self._network_info_worker: Any | None = None
         self._network_error: str | None = None
+        self._bluetooth_info: dict[str, Any] | None = None
+        self._bluetooth_info_worker: Any | None = None
+        self._bluetooth_error: str | None = None
+        self._bluetooth_refresh_seconds: float | None = None
+        self._bluetooth_last_refreshed_at: float | None = None
         self._opened_at = time.perf_counter()
         self._first_render_seconds: float | None = None
         self._network_refresh_seconds: float | None = None
@@ -474,36 +485,93 @@ class SettingsScreen(ModalScreen[None]):
                         classes="settings-cat-section", id="section-cat-bluetooth"
                     ):
                         yield Label(
-                            "[bold #bc8cff]Bluetooth Low Energy Parameters[/bold #bc8cff]",
+                            "[bold #bc8cff]Bluetooth Low Energy Diagnostics & Parameters[/bold #bc8cff]",
                             classes="settings-field-label",
                         )
                         yield Static(
-                            "[dim #8b949e]Hardware adapter state, service UUIDs, and BLE operational roles.[/dim #8b949e]",
+                            "[dim #8b949e]Live native hardware adapter telemetry, BitChat GATT UUIDs, and BLE operational roles.[/dim #8b949e]",
                             classes="settings-cat-intro",
                         )
                         yield Label("Platform Driver Backend:")
                         yield Static(
+                            "Checking Bluetooth backend...",
                             id="settings-static-ble-backend",
+                            classes="safe-ident-display",
+                        )
+                        yield Label("Hardware Adapter (Name / Address / Device ID):")
+                        yield Static(
+                            "Checking Bluetooth hardware adapter...",
+                            id="settings-static-ble-adapter",
+                            classes="safe-ident-display",
+                        )
+                        yield Label("Bluetooth Radio Power & Capabilities:")
+                        yield Static(
+                            "Checking radio state...",
+                            id="settings-static-ble-radio",
                             classes="safe-ident-display",
                         )
                         yield Label("Standard BitChat BLE Service UUID:")
                         yield Static(
-                            "0000fee0-0000-1000-8000-00805f9b34fb",
+                            BITCHAT_SERVICE_UUID.upper(),
                             id="settings-static-ble-uuid",
                             classes="safe-ident-display",
                         )
-                        yield Label("BLE Peripheral Role (GATT Server):")
+                        yield Label("BitChat GATT Characteristic UUID:")
                         yield Static(
+                            BITCHAT_CHARACTERISTIC_UUID.upper(),
+                            id="settings-static-ble-char-uuid",
+                            classes="safe-ident-display",
+                        )
+                        yield Label("BLE Peripheral Role:")
+                        yield Static(
+                            "Checking peripheral support...",
                             id="settings-static-ble-peripheral",
                             classes="safe-ident-display",
                         )
-                        yield Label("BLE Central Role (Background Scanner):")
+                        yield Label("GATT Server Status:")
                         yield Static(
+                            "Stopped",
+                            id="settings-static-ble-gatt-status",
+                            classes="safe-ident-display",
+                        )
+                        yield Label("Discovery Advertisement Status:")
+                        yield Static(
+                            "Inactive",
+                            id="settings-static-ble-adv-status",
+                            classes="safe-ident-display",
+                        )
+                        yield Label("BLE Central Role (Scanner):")
+                        yield Static(
+                            "Checking central scanner...",
                             id="settings-static-ble-central",
                             classes="safe-ident-display",
                         )
+                        yield Label("BLE Peers & Negotiated ATT MTU:")
                         yield Static(
-                            "[dim #8b949e]Cross-platform parity: Windows uses native WinRT BLE APIs; Linux uses BlueZ via D-Bus.[/dim #8b949e]",
+                            "Discovered: 0 | Connected Central: 0 | Server Clients: 0 | MTU: 185B",
+                            id="settings-static-ble-peers",
+                            classes="safe-ident-display",
+                        )
+                        yield Label("Last Bluetooth Error / Diagnostic Detail:")
+                        yield Static(
+                            "None",
+                            id="settings-static-ble-error",
+                            classes="safe-ident-display",
+                        )
+                        yield Label("Last Refresh & Native Rust BLE Engine:")
+                        yield Static(
+                            "Pending refresh...",
+                            id="settings-static-ble-refresh",
+                            classes="safe-ident-display",
+                        )
+                        with Horizontal(classes="settings-inline-actions"):
+                            yield Button(
+                                "Refresh Bluetooth Information",
+                                id="btn-settings-bluetooth-refresh",
+                                classes="action-btn",
+                            )
+                        yield Static(
+                            "[dim #8b949e]Cross-platform native Rust BLE: Windows uses WinRT BLE APIs; Linux uses BlueZ over D-Bus; macOS uses CoreBluetooth central.[/dim #8b949e]",
                             classes="settings-note",
                         )
 
@@ -755,15 +823,234 @@ class SettingsScreen(ModalScreen[None]):
             self.query_one("#btn-settings-save", Button).active_effect_duration = 0
         self._apply_category_visibility()
         self._populate_initial_fields()
+        self._render_bluetooth_information()
         self._render_network_information()
         self._focus_category(self.selected_category)
         self.call_after_refresh(self._record_first_render)
         if self.active_category == "network":
             self._schedule_network_information_refresh()
+        elif self.active_category == "bluetooth":
+            self._schedule_bluetooth_information_refresh()
 
     def on_unmount(self) -> None:
         if self._network_info_worker is not None:
             self._network_info_worker.cancel()
+        if self._bluetooth_info_worker is not None:
+            self._bluetooth_info_worker.cancel()
+
+    def _schedule_bluetooth_information_refresh(self, *, force: bool = False) -> None:
+        """Run a bounded live Bluetooth probe while the Bluetooth category is open."""
+        if self.active_category != "bluetooth":
+            return
+        worker = self._bluetooth_info_worker
+        if worker is not None and getattr(worker, "is_running", False) and not force:
+            return
+        self._bluetooth_info_worker = self.run_worker(
+            self._refresh_bluetooth_information(),
+            name="settings-bluetooth-diagnostics",
+            group="settings-bluetooth-diagnostics",
+            exclusive=True,
+            exit_on_error=False,
+        )
+
+    async def _refresh_bluetooth_information(self) -> None:
+        """Query live Bluetooth transport + native Rust hardware telemetry asynchronously."""
+        started = time.perf_counter()
+        try:
+            coord = getattr(self.app, "coordinator", None)
+            bt_trans = (
+                coord._transports.get("bluetooth")
+                if coord is not None and hasattr(coord, "_transports")
+                else None
+            )
+            if bt_trans is not None and hasattr(bt_trans, "refresh_diagnostics"):
+                telem = await asyncio.wait_for(
+                    bt_trans.refresh_diagnostics(),
+                    timeout=BLUETOOTH_DIAGNOSTICS_TIMEOUT_SECONDS,
+                )
+                self._bluetooth_info = dict(telem)
+            elif HAS_NATIVE_CORE and hasattr(_core, "probe_native_ble_adapter_raw"):
+                raw = await asyncio.wait_for(
+                    asyncio.to_thread(_core.probe_native_ble_adapter_raw),
+                    timeout=BLUETOOTH_DIAGNOSTICS_TIMEOUT_SECONDS,
+                )
+                self._bluetooth_info = {
+                    "backend_name": raw.get("platform_backend", "Native Rust BLE"),
+                    "rust_ble_active": True,
+                    "adapter_available": bool(raw.get("adapter_present", False)),
+                    "adapter_name": raw.get("adapter_name", "None Detected"),
+                    "adapter_address": raw.get("adapter_address", "Unavailable"),
+                    "adapter_id": raw.get("device_id", "Unavailable"),
+                    "adapter_state": raw.get("radio_state", "Unavailable"),
+                    "radio_state": str(raw.get("radio_state", "unavailable")).lower(),
+                    "central_supported": bool(raw.get("central_supported", False)),
+                    "peripheral_supported": bool(
+                        raw.get("peripheral_supported", False)
+                    ),
+                    "central_status": (
+                        "Idle (Supported)"
+                        if raw.get("central_supported")
+                        else "Unsupported"
+                    ),
+                    "peripheral_status": (
+                        "Idle (Supported)"
+                        if raw.get("peripheral_supported")
+                        else "Unsupported"
+                    ),
+                    "gatt_server_status": "Stopped",
+                    "discovery_advertisement_status": "Inactive",
+                    "scanner_status": "Stopped",
+                    "service_uuid": BITCHAT_SERVICE_UUID.upper(),
+                    "characteristic_uuid": BITCHAT_CHARACTERISTIC_UUID.upper(),
+                    "discovered_peers_count": 0,
+                    "connected_central_count": 0,
+                    "connected_server_clients_count": 0,
+                    "active_mtu": 185,
+                    "diagnostic_detail": raw.get("diagnostic_detail", ""),
+                    "error_message": raw.get("error_message"),
+                }
+            self._bluetooth_refresh_seconds = time.perf_counter() - started
+            self._bluetooth_last_refreshed_at = time.time()
+            self._bluetooth_error = None
+        except Exception as error:
+            self._bluetooth_error = str(error)
+            logger.warning("Settings Bluetooth diagnostics failed: %s", error)
+        self._render_bluetooth_information()
+
+    def _render_bluetooth_information(self) -> None:
+        """Render all live Bluetooth diagnostics truthfully with zero blank boxes."""
+        coord = getattr(self.app, "coordinator", None)
+        bt_trans = (
+            coord._transports.get("bluetooth")
+            if coord is not None and hasattr(coord, "_transports")
+            else None
+        )
+        live_telem: dict[str, Any] = {}
+        if bt_trans is not None and hasattr(bt_trans, "get_telemetry"):
+            with contextlib.suppress(Exception):
+                live_telem = dict(bt_trans.get_telemetry())
+
+        telem: dict[str, Any] = {}
+        if self._bluetooth_info:
+            telem.update(self._bluetooth_info)
+        if live_telem:
+            # Prefer live runtime counts & active status while preserving probed adapter metadata
+            for key, val in live_telem.items():
+                if val not in (None, "", "Not checked") or key not in telem:
+                    telem[key] = val
+
+        default_backend = (
+            "Windows WinRT (Rust native)"
+            if sys.platform == "win32"
+            else "Linux BlueZ D-Bus (Rust native zbus)"
+            if sys.platform.startswith("linux")
+            else "macOS CoreBluetooth"
+        )
+        backend_name = str(telem.get("backend_name") or default_backend)
+        adapter_avail = bool(telem.get("adapter_available", False))
+        adapter_name = str(
+            telem.get("adapter_name")
+            or ("Detected" if adapter_avail else "Not checked yet")
+        )
+        adapter_addr = str(telem.get("adapter_address") or "Unavailable")
+        adapter_id = str(telem.get("adapter_id") or "Unavailable")
+        radio_state = str(telem.get("adapter_state") or "Not checked")
+        central_sup = bool(telem.get("central_supported", False))
+        periph_sup = bool(telem.get("peripheral_supported", False))
+        central_status = str(
+            telem.get("central_status")
+            or (
+                "Active (Scanning)"
+                if telem.get("scanner_status") == "Active"
+                else "Idle (Supported)"
+                if central_sup
+                else "Not active"
+            )
+        )
+        peripheral_status = str(
+            telem.get("peripheral_status")
+            or (
+                "Active (GATT Ready)"
+                if telem.get("advertising_active")
+                else "Idle (Supported)"
+                if periph_sup
+                else "Unsupported / Inactive"
+            )
+        )
+        gatt_status = str(telem.get("gatt_server_status") or "Stopped")
+        adv_status = str(telem.get("discovery_advertisement_status") or "Inactive")
+        svc_uuid = str(telem.get("service_uuid") or BITCHAT_SERVICE_UUID.upper())
+        char_uuid = str(
+            telem.get("characteristic_uuid") or BITCHAT_CHARACTERISTIC_UUID.upper()
+        )
+        disc_count = int(telem.get("discovered_peers_count", 0) or 0)
+        central_count = int(
+            telem.get(
+                "connected_central_count",
+                telem.get("connected_peers_count", 0),
+            )
+            or 0
+        )
+        server_clients = int(telem.get("connected_server_clients_count", 0) or 0)
+        mtu_val = int(telem.get("active_mtu", 185) or 185)
+        err_text = (
+            self._bluetooth_error
+            or telem.get("peripheral_error")
+            or telem.get("error_message")
+            or telem.get("diagnostic_detail")
+            or "None"
+        )
+        rust_active = bool(telem.get("rust_ble_active", HAS_NATIVE_CORE))
+        if self._bluetooth_last_refreshed_at is not None:
+            refresh_str = (
+                f"Refreshed {time.strftime('%H:%M:%S', time.localtime(self._bluetooth_last_refreshed_at))} "
+                f"({(self._bluetooth_refresh_seconds or 0.0) * 1000:.0f} ms) | "
+                f"Rust Native BLE: {'Active' if rust_active else 'Fallback'}"
+            )
+        else:
+            refresh_str = (
+                f"Cached snapshot | Rust Native BLE: "
+                f"{'Active' if rust_active else 'Fallback'}"
+            )
+
+        values = {
+            "#settings-static-ble-backend": f"[dim #e6edf3]{backend_name}[/dim #e6edf3]",
+            "#settings-static-ble-adapter": (
+                f"[dim #e6edf3]{adapter_name} | Addr: {adapter_addr} | "
+                f"ID: {adapter_id[:48]}[/dim #e6edf3]"
+            ),
+            "#settings-static-ble-radio": (
+                f"[dim #e6edf3]Radio: {radio_state} | "
+                f"Adapter Present: {'Yes' if adapter_avail else 'No'} | "
+                f"Central: {'Supported' if central_sup else 'No'} | "
+                f"Peripheral: {'Supported' if periph_sup else 'No'}[/dim #e6edf3]"
+            ),
+            "#settings-static-ble-uuid": f"[dim #58a6ff]{svc_uuid}[/dim #58a6ff]",
+            "#settings-static-ble-char-uuid": f"[dim #58a6ff]{char_uuid}[/dim #58a6ff]",
+            "#settings-static-ble-peripheral": (
+                f"[dim #e6edf3]{peripheral_status}[/dim #e6edf3]"
+            ),
+            "#settings-static-ble-gatt-status": (
+                f"[dim #e6edf3]{gatt_status}[/dim #e6edf3]"
+            ),
+            "#settings-static-ble-adv-status": (
+                f"[dim #e6edf3]{adv_status}[/dim #e6edf3]"
+            ),
+            "#settings-static-ble-central": (
+                f"[dim #e6edf3]{central_status}[/dim #e6edf3]"
+            ),
+            "#settings-static-ble-peers": (
+                f"[dim #e6edf3]Discovered: {disc_count} | "
+                f"Connected Central: {central_count} | "
+                f"Server Clients: {server_clients} | "
+                f"ATT MTU: {mtu_val}B[/dim #e6edf3]"
+            ),
+            "#settings-static-ble-error": f"[dim #e6edf3]{err_text}[/dim #e6edf3]",
+            "#settings-static-ble-refresh": f"[dim #8b949e]{refresh_str}[/dim #8b949e]",
+        }
+        for selector, text in values.items():
+            with contextlib.suppress(NoMatches):
+                self.query_one(selector, Static).update(text)
 
     def _record_first_render(self) -> None:
         if self._first_render_seconds is None:
@@ -964,6 +1251,11 @@ class SettingsScreen(ModalScreen[None]):
             self._schedule_network_information_refresh()
         elif self._network_info_worker is not None:
             self._network_info_worker.cancel()
+        if self.active_category == "bluetooth":
+            self._render_bluetooth_information()
+            self._schedule_bluetooth_information_refresh()
+        elif self._bluetooth_info_worker is not None:
+            self._bluetooth_info_worker.cancel()
 
     def _capture_form_values(self) -> dict[str, Any]:
         """Capture normalized dictionary of all editable settings from form controls."""
@@ -1150,25 +1442,8 @@ class SettingsScreen(ModalScreen[None]):
                     self.current_security_mode == "maximum"
                 )
 
-            # 3. Bluetooth / BLE parameters
-            ble_backend = (
-                "Windows WinRT BLE" if sys.platform == "win32" else "Linux BlueZ D-Bus"
-            )
-            with contextlib.suppress(NoMatches):
-                self.query_one("#settings-static-ble-backend", Static).update(
-                    f"[dim #e6edf3]{ble_backend}[/dim #e6edf3]"
-                )
-                status_text = (
-                    "Operational"
-                    if (coord and getattr(coord, "ble_status", "") == "ready")
-                    else "Standby"
-                )
-                self.query_one("#settings-static-ble-peripheral", Static).update(
-                    f"[dim #e6edf3]{status_text}[/dim #e6edf3]"
-                )
-                self.query_one("#settings-static-ble-central", Static).update(
-                    "[dim #e6edf3]Active / Scanning[/dim #e6edf3]"
-                )
+            # 3. Bluetooth / BLE parameters (live telemetry; zero hardcoded guesses)
+            self._render_bluetooth_information()
 
             # 4. LAN Networking parameters and read-only OS information
             with contextlib.suppress(NoMatches):
@@ -1248,22 +1523,31 @@ class SettingsScreen(ModalScreen[None]):
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         bid = event.button.id or ""
         if bid.startswith("btn-cat-"):
+            event.stop()
             cat = bid.replace("btn-cat-", "")
             self.selected_category = cat
             self.switch_category(cat)
             event.button.focus()
+        elif bid == "btn-settings-bluetooth-refresh":
+            event.stop()
+            self._schedule_bluetooth_information_refresh(force=True)
         elif bid == "btn-settings-network-refresh":
+            event.stop()
             self._schedule_network_information_refresh(force=True)
         elif bid == "btn-settings-network-retry":
+            event.stop()
             coord = getattr(self.app, "coordinator", None)
             if coord is not None and hasattr(coord, "switch_transport"):
                 await coord.switch_transport("lan")
                 self._schedule_network_information_refresh(force=True)
         elif bid in ("btn-settings-cancel", "btn-settings-back"):
+            event.stop()
             self._handle_cancel_or_back()
         elif bid == "btn-settings-restore-defaults":
+            event.stop()
             self._restore_defaults()
         elif bid == "btn-settings-save":
+            event.stop()
             self._save_settings()
 
     def _restore_defaults(self) -> None:

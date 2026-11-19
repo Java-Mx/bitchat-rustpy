@@ -91,34 +91,20 @@ class StatusBar(Widget):
                 yield Button("Quit", id="btn-action-quit", classes="action-btn")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Forward action button clicks to parent application."""
+        """Forward action button clicks once via ActionTriggered without bubbling."""
         bid = event.button.id or ""
-        app: Any = self.app
-        match bid:
-            case "btn-action-edit":
-                self.post_message(self.ActionTriggered("edit"))
-                if hasattr(app, "action_open_edit_theme"):
-                    app.action_open_edit_theme()
-            case "btn-action-settings":
-                self.post_message(self.ActionTriggered("settings"))
-                if hasattr(app, "action_open_settings"):
-                    app.action_open_settings()
-            case "btn-action-peers":
-                self.post_message(self.ActionTriggered("peers"))
-                if hasattr(app, "action_open_peers"):
-                    app.action_open_peers()
-            case "btn-action-commands":
-                self.post_message(self.ActionTriggered("commands"))
-                if hasattr(app, "action_open_commands"):
-                    app.action_open_commands()
-            case "btn-action-help":
-                self.post_message(self.ActionTriggered("help"))
-                if hasattr(app, "action_show_help"):
-                    app.action_show_help()
-            case "btn-action-quit":
-                self.post_message(self.ActionTriggered("quit"))
-                if hasattr(app, "action_quit") and hasattr(app, "_spawn_task"):
-                    app._spawn_task(app.action_quit())
+        action_map = {
+            "btn-action-edit": "edit",
+            "btn-action-settings": "settings",
+            "btn-action-peers": "peers",
+            "btn-action-commands": "commands",
+            "btn-action-help": "help",
+            "btn-action-quit": "quit",
+        }
+        action = action_map.get(bid)
+        if action is not None:
+            event.stop()
+            self.post_message(self.ActionTriggered(action))
 
     def watch_mesh_status(self, new_val: str) -> None:
         try:

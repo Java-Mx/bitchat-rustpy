@@ -98,6 +98,8 @@ class PeersScreen(Screen[None]):
 
     def on_mount(self) -> None:
         """Setup table columns and size footer for the available terminal width."""
+        self._last_peer_rows: list[tuple[str, ...]] | None = None
+        self._last_local_info: str | None = None
         table = self.query_one("#peers-table", DataTable)
         table.add_columns(
             "Peer Name",
@@ -133,22 +135,27 @@ class PeersScreen(Screen[None]):
             local_nick = coord.nickname
             active_transport = coord.effective_active_transport_name.upper()
 
-        with contextlib.suppress(Exception):
-            self.query_one("#peers-local-info", Static).update(
-                f"[dim #8b949e]Local Node:[/dim #8b949e] "
-                f"[bold #e6edf3]{local_nick}[/bold #e6edf3] "
-                f"([dim #58a6ff]{local_pid[:8]}[/dim #58a6ff]) | "
-                f"[dim #8b949e]Transport:[/dim #8b949e] "
-                f"[bold #39c5cf]{active_transport}[/bold #39c5cf]"
-            )
+        local_info_markup = (
+            f"[dim #8b949e]Local Node:[/dim #8b949e] "
+            f"[bold #e6edf3]{local_nick}[/bold #e6edf3] "
+            f"([dim #58a6ff]{local_pid[:8]}[/dim #58a6ff]) | "
+            f"[dim #8b949e]Transport:[/dim #8b949e] "
+            f"[bold #39c5cf]{active_transport}[/bold #39c5cf]"
+        )
+        if getattr(self, "_last_local_info", None) != local_info_markup:
+            self._last_local_info = local_info_markup
+            with contextlib.suppress(Exception):
+                self.query_one("#peers-local-info", Static).update(local_info_markup)
 
         try:
             table = self.query_one("#peers-table", DataTable)
         except Exception:
             return
-        table.clear()
 
         if coord is None:
+            if getattr(self, "_last_peer_rows", None) != []:
+                self._last_peer_rows = []
+                table.clear()
             with contextlib.suppress(Exception):
                 self.query_one("#peers-empty-container").display = True
                 table.display = False
@@ -177,9 +184,10 @@ class PeersScreen(Screen[None]):
         }
 
         displayed_peers: set[str] = set()
+        new_rows: list[tuple[str, ...]] = []
 
         # 1. Connected / Authenticated peers
-        for addr in connected_peers:
+        for addr in sorted(connected_peers):
             if addr in local_addresses:
                 continue
 
@@ -205,20 +213,22 @@ class PeersScreen(Screen[None]):
             )
             trans_lbl = active_transport_name.upper()
 
-            table.add_row(
-                nick,
-                addr,
-                trans_lbl,
-                conn_state,
-                fp,
-                "Strong",
+            new_rows.append(
+                (
+                    nick,
+                    addr,
+                    trans_lbl,
+                    conn_state,
+                    fp,
+                    "Strong",
+                )
             )
             displayed_peers.add(addr)
             if pid:
                 displayed_peers.add(pid.lower())
 
         # 2. Discovered peers
-        for addr_key, peer in discovered_peers.items():
+        for addr_key, peer in sorted(discovered_peers.items()):
             if addr_key in displayed_peers or addr_key in local_addresses:
                 continue
 
@@ -240,17 +250,29 @@ class PeersScreen(Screen[None]):
             rssi_str = f"{rssi} dBm" if rssi is not None else "-"
             trans_lbl = active_transport_name.upper()
 
-            table.add_row(
-                name,
-                addr_key,
-                trans_lbl,
-                "[dim #8b949e]Discovered[/dim #8b949e]",
-                "-",
-                rssi_str,
+            new_rows.append(
+                (
+                    name,
+                    addr_key,
+                    trans_lbl,
+                    "[dim #8b949e]Discovered[/dim #8b949e]",
+                    "-",
+                    rssi_str,
+                )
             )
             displayed_peers.add(addr_key)
 
-        has_peers = len(displayed_peers) > 0
+        if getattr(self, "_last_peer_rows", None) != new_rows:
+            prev_row = table.cursor_row if table.row_count > 0 else 0
+            self._last_peer_rows = list(new_rows)
+            table.clear()
+            for row_vals in new_rows:
+                table.add_row(*row_vals)
+            if new_rows:
+                with contextlib.suppress(Exception):
+                    table.move_cursor(row=min(prev_row, len(new_rows) - 1))
+
+        has_peers = len(new_rows) > 0
         with contextlib.suppress(Exception):
             empty_box = self.query_one("#peers-empty-container")
             table.display = has_peers
@@ -308,14 +330,19 @@ class PeersScreen(Screen[None]):
         """Handle button actions on PeersScreen."""
         match event.button.id:
             case "btn-peers-back":
+                event.stop()
                 self.action_dismiss_screen()
             case "btn-peers-chat":
+                event.stop()
                 self.action_open_chat()
             case "btn-peers-refresh":
+                event.stop()
                 self.action_refresh_peers()
             case "btn-peers-connect":
+                event.stop()
                 self._handle_connect()
             case "btn-peers-disconnect":
+                event.stop()
                 self._handle_disconnect()
 
     def _get_target_peer(self) -> str:

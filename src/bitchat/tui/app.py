@@ -1156,7 +1156,8 @@ class BitChatApp(App[None]):
         )
 
     def on_status_bar_action_triggered(self, event: StatusBar.ActionTriggered) -> None:
-        """Handle clicks on bottom Action Bar buttons."""
+        """Handle clicks on bottom Action Bar buttons once."""
+        event.stop()
         match event.action:
             case "edit":
                 self.action_open_edit_theme()
@@ -1172,20 +1173,26 @@ class BitChatApp(App[None]):
                 self._spawn_task(self.action_quit())
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle button pressed events from bottom action bar or screens."""
+        """Handle fallback action button pressed events."""
         bid = event.button.id or ""
         match bid:
             case "btn-action-edit":
+                event.stop()
                 self.action_open_edit_theme()
             case "btn-action-settings":
+                event.stop()
                 self.action_open_settings()
             case "btn-action-peers":
+                event.stop()
                 self.action_open_peers()
             case "btn-action-commands":
+                event.stop()
                 self.action_open_commands()
             case "btn-action-help":
+                event.stop()
                 self.action_show_help()
             case "btn-action-quit":
+                event.stop()
                 self._spawn_task(self.action_quit())
 
     def on_peer_sidebar_peer_selected(self, event: PeerSidebar.PeerSelected) -> None:
@@ -2259,19 +2266,22 @@ class BitChatApp(App[None]):
             if msg_inp.value:
                 return
         if any(isinstance(s, HomeScreen) for s in self._screen_stack):
-            while len(self._screen_stack) > 1 and not isinstance(
-                self.screen, HomeScreen
-            ):
-                self.pop_screen()
+            with self.batch_update():
+                while len(self._screen_stack) > 1 and not isinstance(
+                    self.screen, HomeScreen
+                ):
+                    self.pop_screen()
             return
         self.push_screen(HomeScreen())
 
     def action_open_chat(self) -> None:
         """Action handler to transition to the primary chat screen."""
-        while len(self._screen_stack) > 1 and not isinstance(
-            self.screen, BLEErrorModal
-        ):
-            self.pop_screen()
+        if len(self._screen_stack) > 1:
+            with self.batch_update():
+                while len(self._screen_stack) > 1 and not isinstance(
+                    self.screen, BLEErrorModal
+                ):
+                    self.pop_screen()
         with contextlib.suppress(Exception):
             self.query_one(MessageInput).focus()
 
@@ -2280,10 +2290,11 @@ class BitChatApp(App[None]):
         if isinstance(self.screen, PeersScreen):
             return
         if any(isinstance(s, PeersScreen) for s in self._screen_stack):
-            while len(self._screen_stack) > 1 and not isinstance(
-                self.screen, PeersScreen
-            ):
-                self.pop_screen()
+            with self.batch_update():
+                while len(self._screen_stack) > 1 and not isinstance(
+                    self.screen, PeersScreen
+                ):
+                    self.pop_screen()
             return
         self.push_screen(PeersScreen())
 
@@ -2292,10 +2303,11 @@ class BitChatApp(App[None]):
         if isinstance(self.screen, TelemetryScreen):
             return
         if any(isinstance(s, TelemetryScreen) for s in self._screen_stack):
-            while len(self._screen_stack) > 1 and not isinstance(
-                self.screen, TelemetryScreen
-            ):
-                self.pop_screen()
+            with self.batch_update():
+                while len(self._screen_stack) > 1 and not isinstance(
+                    self.screen, TelemetryScreen
+                ):
+                    self.pop_screen()
             return
         self.push_screen(TelemetryScreen())
 

@@ -359,10 +359,14 @@ class ConnectionModal(ModalScreen[str | None]):
         """Handle compatibility buttons."""
         match event.button.id:
             case "btn-conn-ble":
+                event.stop()
                 self.action_select_ble()
             case "btn-conn-lan":
+                event.stop()
                 self.action_select_lan()
             case "btn-conn-offline":
+                event.stop()
                 self.action_select_offline()
             case "btn-conn-cancel":
+                event.stop()
                 self.action_cancel()

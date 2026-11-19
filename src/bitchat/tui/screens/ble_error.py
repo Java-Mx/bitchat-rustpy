@@ -323,14 +323,19 @@ class BLEErrorModal(ModalScreen[str | None]):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-ble-ack":
+            event.stop()
             self.dismiss("acknowledged")
         elif event.button.id in ("btn-ble-close", "btn-lan-close"):
+            event.stop()
             self.dismiss(None)
         elif event.button.id in ("btn-ble-retry", "btn-lan-retry", "btn-retry-lan"):
+            event.stop()
             self.dismiss("retry")
         elif event.button.id == "btn-ble-lan":
+            event.stop()
             self.dismiss("lan")
         elif event.button.id in ("btn-lan-ble", "btn-switch-ble"):
+            event.stop()
             self.dismiss("ble")
 
     def on_mount(self) -> None:
