@@ -44,7 +44,11 @@ fn owned_val_bool(map: &HashMap<String, OwnedValue>, key: &str, default: bool) -
 }
 
 fn owned_val_string(map: &HashMap<String, OwnedValue>, key: &str) -> Option<String> {
-    map.get(key).and_then(|v| String::try_from(v).ok())
+    map.get(key).and_then(|v| match &**v {
+        Value::Str(s) => Some(s.to_string()),
+        Value::ObjectPath(p) => Some(p.as_str().to_string()),
+        _ => None,
+    })
 }
 
 async fn get_managed_objects(conn: &Connection) -> Result<ManagedObjects, String> {
@@ -101,8 +105,8 @@ pub async fn probe_linux_adapter_async() -> BleAdapterSnapshot {
                 .map(|p| owned_val_bool(p, "Powered", false))
                 .unwrap_or(false)
         })
-        .copied()
-        .unwrap_or(adapters[0]);
+        .cloned()
+        .unwrap_or_else(|| adapters[0].clone());
 
     let adapter_props = ifaces.get("org.bluez.Adapter1");
     let powered = adapter_props
@@ -238,9 +242,7 @@ impl BluezGattCharacteristicIface {
         if let Ok(mut guard) = self.value.lock() {
             *guard = value.clone();
         }
-        let client_id = options
-            .get("device")
-            .and_then(|v| String::try_from(v).ok())
+        let client_id = owned_val_string(&options, "device")
             .map(|dev_path| {
                 let tail = dev_path.rsplit('/').next().unwrap_or("bluez_client");
                 if let Some(stripped) = tail.strip_prefix("dev_") {
