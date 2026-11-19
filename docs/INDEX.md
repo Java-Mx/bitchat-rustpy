@@ -1,6 +1,6 @@
 # BitChat Documentation Index
 
-Welcome to the central documentation index for **BitChat** (`v0.3.2`), a peer-to-peer encrypted terminal messenger powered by a hybrid Python and Rust (`bitchat._bitchat_core`) architecture over Bluetooth Low Energy (BLE) and Local Area Network (LAN) transports.
+Welcome to the central documentation index for **BitChat** (`v0.3.3`), a peer-to-peer encrypted terminal messenger powered by a hybrid Python and Rust (`bitchat._bitchat_core`) architecture over Bluetooth Low Energy (BLE) and Local Area Network (LAN) transports.
 
 ---
 
@@ -9,11 +9,11 @@ Welcome to the central documentation index for **BitChat** (`v0.3.2`), a peer-to
 | Document | Description |
 | :--- | :--- |
 | [`README.md`](../README.md) | Project overview, feature highlights, quick-start installation, TUI/CLI usage, and architecture summary. |
-| [`docs/DOWNLOAD.md`](DOWNLOAD.md) | Official download links, SHA-256 verification instructions, and package formats for `v0.3.2`. |
+| [`docs/DOWNLOAD.md`](DOWNLOAD.md) | Official download links, SHA-256 verification instructions, and package formats for `v0.3.3`. |
 | [`docs/UNINSTALLATION.md`](UNINSTALLATION.md) | Complete guide to uninstalling BitChat across Windows, Linux, and Python environments (`pip`, `uv`, `pipx`), including `PATH` cleanup and optional user-data removal. |
 | [`SUPPORT.md`](../SUPPORT.md) | Diagnostic commands (`bitchat --configure`), log file locations, troubleshooting steps, and how to get help. |
 | [`Screenshot.md`](../Screenshot.md) | Visual gallery of the BitChat Textual Terminal UI (Home Screen, Chat Screen, Settings, Connection Modal, Help). |
-| [`CHANGELOG.md`](../CHANGELOG.md) | Chronological release history and detailed changelog through `v0.3.2`. |
+| [`CHANGELOG.md`](../CHANGELOG.md) | Chronological release history and detailed changelog through `v0.3.3`. |
 
 ---
 
@@ -32,8 +32,8 @@ Welcome to the central documentation index for **BitChat** (`v0.3.2`), a peer-to
 | Document | Description |
 | :--- | :--- |
 | [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) | Hybrid Python + Rust (`bitchat._bitchat_core`) system architecture, layer boundaries, threading/asyncio model, and component design. |
-| [`docs/ROADMAP.md`](ROADMAP.md) | 7-stage engineering roadmap from the current hybrid Python/Rust core (`v0.3.2`) through the ~60% Rust milestone to a 100% native Rust application. |
-| [`docs/REQUIREMENTS.md`](REQUIREMENTS.md) | Functional (`FR-*`) and Non-Functional (`NFR-*`) requirements matrix with current `v0.3.2` implementation status. |
+| [`docs/ROADMAP.md`](ROADMAP.md) | 7-stage engineering roadmap from the current hybrid Python/Rust core (`v0.3.3`) through native transports to a 100% native Rust application. |
+| [`docs/REQUIREMENTS.md`](REQUIREMENTS.md) | Functional (`FR-*`) and Non-Functional (`NFR-*`) requirements matrix with current `v0.3.3` implementation status. |
 | [`docs/DEVELOPMENT.md`](DEVELOPMENT.md) | Developer environment setup (`uv`, Rust `cargo`, `maturin`), testing, linting, benchmarking, and debugging guide. |
 | [`docs/RELEASE_PROCESS.md`](RELEASE_PROCESS.md) | Release engineering workflow, version synchronization checklist, CI/CD pipelines, packaging scripts, and artifact verification. |
 
@@ -48,7 +48,7 @@ Welcome to the central documentation index for **BitChat** (`v0.3.2`), a peer-to
 | [`docs/protocol/MESSAGE_TYPES.md`](protocol/MESSAGE_TYPES.md) | Complete specification of the protocol `MessageType` codes (`0x01`–`0x25`) and their inner payload formats. |
 | [`docs/protocol/FRAGMENTATION.md`](protocol/FRAGMENTATION.md) | MTU-aware packet fragmentation (`> 500` bytes), 13-byte fragment headers, inter-fragment pacing, and bounded reassembly (`NativeFragmentReassembler`). |
 | [`docs/protocol/ROUTING.md`](protocol/ROUTING.md) | Multi-hop flood routing, TTL bounds, SHA-256 deduplication cache (`NativePacketDeduplicator`), peer rate limiting (`NativePeerRateLimiter`), and Store-and-Forward buffering (`StoreAndForwardQueue`). |
-| [`docs/protocol/COMPATIBILITY.md`](protocol/COMPATIBILITY.md) | Interoperability status between BitChat RustPy/Rust (`v0.3.1`) and external BitChat reference implementations, including post-handshake peer ID binding differences. |
+| [`docs/protocol/COMPATIBILITY.md`](protocol/COMPATIBILITY.md) | Interoperability status between BitChat RustPy (`v0.3.3`) and external BitChat reference implementations (`bitchat-tui`), including controlled legacy peer-ID compatibility. |
 
 ---
 
@@ -58,7 +58,7 @@ Welcome to the central documentation index for **BitChat** (`v0.3.2`), a peer-to
 | :--- | :--- |
 | [`SECURITY.md`](../SECURITY.md) | Private vulnerability reporting policy, supported versions, audit status, and matrix of implemented protections vs. known limitations. |
 | [`docs/security/CRYPTOGRAPHY.md`](security/CRYPTOGRAPHY.md) | Cryptographic primitives (`X25519`, `Ed25519`, `AES-256-GCM`, `HKDF-SHA256`, `PBKDF2-HMAC-SHA256`) and identity key derivation. |
-| [`docs/security/NOISE.md`](security/NOISE.md) | `Noise_XX_25519_AESGCM_SHA256` 3-message mutual authentication handshake and transport encryption state machine. |
+| [`docs/security/NOISE.md`](security/NOISE.md) | `Noise_XX_25519_ChaChaPoly_SHA256` 3-message mutual authentication handshake and authoritative Rust transport encryption state machine. |
 | [`docs/security/THREAT_MODEL.md`](security/THREAT_MODEL.md) | Adversary threat model, trust boundaries, TOFU vs. `maximum` security mode, and residual risks. |
 | [`docs/security/DATA_HANDLING.md`](security/DATA_HANDLING.md) | Technical inventory of local files (`~/.bitchat/`), network broadcasts, in-memory retention, and deletion semantics. |
 | [`PRIVACY_POLICY.md`](../PRIVACY_POLICY.md) | Official project Privacy Policy (Draft for publisher/legal review; plain-text installer copy at [`packaging/windows/legal/PRIVACY_POLICY.txt`](../packaging/windows/legal/PRIVACY_POLICY.txt)). |

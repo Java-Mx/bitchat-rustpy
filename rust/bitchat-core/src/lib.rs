@@ -2,6 +2,7 @@ use pyo3::prelude::*;
 
 pub mod ble;
 pub mod crypto;
+pub mod engine;
 pub mod errors;
 pub mod fragmentation;
 pub mod framing;
@@ -25,6 +26,8 @@ fn _bitchat_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(protocol::unpad_packet_data, m)?)?;
     m.add_function(wrap_pyfunction!(protocol::peer_id_to_hex, m)?)?;
     m.add_function(wrap_pyfunction!(protocol::peer_id_from_hex, m)?)?;
+    m.add_function(wrap_pyfunction!(protocol::classify_peer_id_raw, m)?)?;
+    m.add_function(wrap_pyfunction!(protocol::normalize_peer_id_raw, m)?)?;
     m.add_function(wrap_pyfunction!(protocol::encode_packet_raw, m)?)?;
     m.add_function(wrap_pyfunction!(protocol::decode_packet_raw, m)?)?;
 
@@ -64,13 +67,22 @@ fn _bitchat_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(crypto::calculate_fingerprint_raw, m)?)?;
     m.add_function(wrap_pyfunction!(crypto::derive_identity_from_private, m)?)?;
 
-    // Noise XX engine and deterministic handshake state machine (Stage 2 & Section 7)
+    // Noise XX engine and deterministic handshake state machine (Stage 2 & Phase 2.2)
     m.add_function(wrap_pyfunction!(noise::determine_handshake_role_raw, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        noise::parse_noise_identity_announce_raw,
+        m
+    )?)?;
     m.add_class::<noise::NativeNoiseCipherState>()?;
     m.add_class::<noise::NativeNoiseSymmetricState>()?;
     m.add_class::<noise::NativeNoiseHandshakeState>()?;
     m.add_class::<noise::NativeNoiseSession>()?;
     m.add_class::<noise::NativeHandshakeStateMachine>()?;
+
+    // Cohesive Native Protocol Engine & Peer State Engine (Phase 2.2 / Stage 3)
+    m.add_class::<engine::NativePeerStateEngine>()?;
+    m.add_class::<engine::NativeInboundResult>()?;
+    m.add_class::<engine::NativeProtocolEngine>()?;
 
     // Mesh deduplication, rate limiting, routing, store-and-forward, ACK tracking (Stage 3)
     m.add_function(wrap_pyfunction!(mesh::compute_packet_id_raw, m)?)?;

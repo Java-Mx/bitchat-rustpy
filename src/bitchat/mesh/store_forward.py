@@ -174,7 +174,7 @@ class PyStoreAndForwardQueue:
 
 
 class StoreAndForwardQueue:
-    """Bounded Store-and-Forward buffer backed by Rust `_bitchat_core`."""
+    """Authoritative Store-and-Forward buffer backed by Rust `_bitchat_core`."""
 
     def __init__(
         self,
@@ -188,13 +188,8 @@ class StoreAndForwardQueue:
         self.max_total_bytes = max_total_bytes
         self.packet_ttl_seconds = packet_ttl_seconds
 
-        self._py = PyStoreAndForwardQueue(
-            max_total_packets=max_total_packets,
-            max_per_peer=max_per_peer,
-            max_total_bytes=max_total_bytes,
-            packet_ttl_seconds=packet_ttl_seconds,
-        )
         self._native: Any | None = None
+        self._py: PyStoreAndForwardQueue | None = None
         if HAS_NATIVE_CORE and hasattr(_core, "NativeStoreAndForwardQueue"):
             self._native = _core.NativeStoreAndForwardQueue(
                 max_total_packets,
@@ -202,9 +197,23 @@ class StoreAndForwardQueue:
                 max_total_bytes,
                 packet_ttl_seconds,
             )
+        else:
+            self._py = PyStoreAndForwardQueue(
+                max_total_packets=max_total_packets,
+                max_per_peer=max_per_peer,
+                max_total_bytes=max_total_bytes,
+                packet_ttl_seconds=packet_ttl_seconds,
+            )
 
     @property
-    def _queues(self) -> dict[str, deque[QueuedPacket]]:
+    def _queues(self) -> dict[str, Any]:
+        """Read-only per-peer queue size snapshot (single authoritative Rust state)."""
+        if self._native is not None:
+            return {
+                peer: [None] * count
+                for peer, count in self._native.peer_queue_sizes().items()
+            }
+        assert self._py is not None
         return self._py._queues
 
     @property
@@ -212,6 +221,7 @@ class StoreAndForwardQueue:
         """Return total number of currently stored packets."""
         if self._native is not None:
             return int(self._native.total_packets)
+        assert self._py is not None
         return self._py.total_packets
 
     @property
@@ -219,6 +229,7 @@ class StoreAndForwardQueue:
         """Return current memory footprint in bytes."""
         if self._native is not None:
             return int(self._native.total_bytes)
+        assert self._py is not None
         return self._py.total_bytes
 
     @property
@@ -226,6 +237,7 @@ class StoreAndForwardQueue:
         """Return number of distinct peers with queued packets."""
         if self._native is not None:
             return int(self._native.peer_count)
+        assert self._py is not None
         return self._py.peer_count
 
     def enqueue(
@@ -237,14 +249,14 @@ class StoreAndForwardQueue:
         """Enqueue packet for delivery to target peer once connected."""
         current_time = time.time() if now is None else now
         peer_key = _normalize_peer_id(target_peer_id)
-        self._py.enqueue(peer_key, packet, now=current_time)
         if self._native is not None:
             return bool(
                 self._native.enqueue(
                     peer_key, packet, len(packet.payload), current_time
                 )
             )
-        return bool(self._py.has_pending(peer_key))
+        assert self._py is not None
+        return self._py.enqueue(peer_key, packet, now=current_time)
 
     def dequeue_for_peer(
         self,
@@ -254,28 +266,31 @@ class StoreAndForwardQueue:
         """Retrieve and remove all valid queued packets for target peer."""
         current_time = time.time() if now is None else now
         peer_key = _normalize_peer_id(target_peer_id)
-        py_result = self._py.dequeue_for_peer(peer_key, now=current_time)
         if self._native is not None:
             return list(self._native.dequeue_for_peer(peer_key, current_time))
-        return py_result
+        assert self._py is not None
+        return self._py.dequeue_for_peer(peer_key, now=current_time)
 
     def has_pending(self, target_peer_id: str | bytes) -> bool:
         """Return True if there are pending packets queued for peer."""
         peer_key = _normalize_peer_id(target_peer_id)
         if self._native is not None:
             return bool(self._native.has_pending(peer_key))
+        assert self._py is not None
         return self._py.has_pending(peer_key)
 
     def prune_expired(self, now: float | None = None) -> int:
         """Remove packets that have exceeded packet_ttl_seconds."""
         current_time = time.time() if now is None else now
-        py_pruned = self._py.prune_expired(now=current_time)
         if self._native is not None:
             return int(self._native.prune_expired(current_time))
-        return py_pruned
+        assert self._py is not None
+        return self._py.prune_expired(now=current_time)
 
     def clear(self) -> None:
         """Clear all stored packets and reset counters."""
-        self._py.clear()
         if self._native is not None:
             self._native.clear()
+            return
+        assert self._py is not None
+        self._py.clear()

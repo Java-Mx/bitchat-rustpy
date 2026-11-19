@@ -1,6 +1,6 @@
-# Technical Data Handling & Storage Inventory (`v0.3.1`)
+# Technical Data Handling & Storage Inventory (`v0.3.3`)
 
-This document provides the code-verified technical inventory of all data created, stored, transmitted, or deleted by **BitChat (`v0.3.1`)**. It serves as the engineering companion to [`PRIVACY_POLICY.md`](../../PRIVACY_POLICY.md) and [`SECURITY.md`](../../SECURITY.md).
+This document provides the code-verified technical inventory of all data created, stored, transmitted, or deleted by **BitChat (`v0.3.3`)**. It serves as the engineering companion to [`PRIVACY_POLICY.md`](../../PRIVACY_POLICY.md) and [`SECURITY.md`](../../SECURITY.md).
 
 ---
 
@@ -28,7 +28,7 @@ Stores the user's persistent cryptographic identity (`LocalIdentity`).
 - **Access Controls:**
   - **POSIX (Linux / macOS):** Written via `_atomic_write_json(..., chmod_mode=0o600)` and tightened on load via `os.chmod(path, 0o600)`.
   - **Windows:** Restricted to the current process token user SID via `_restrict_windows_file_acl` using Win32 `SetNamedSecurityInfoW` with a protected DACL granting `FILE_ALL_ACCESS` only to the current user.
-- **At-Rest Encryption Status:** Keys are stored as raw hexadecimal strings in JSON and are **not** encrypted with a user passphrase at rest in `v0.3.1`.
+- **At-Rest Encryption Status:** Keys are stored as raw hexadecimal strings in JSON and are **not** encrypted with a user passphrase at rest in `v0.3.3`.
 - **Corruption Recovery:** If `identity.json` contains malformed JSON or invalid key bytes, `_create_corrupt_identity_backup()` copies the file to `identity.json.corrupt.<unix_timestamp>` before generating a replacement identity.
 
 ### 1.2 `identity.json.lock` (`src/bitchat/storage/config.py`)

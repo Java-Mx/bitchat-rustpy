@@ -276,8 +276,97 @@ class PyMeshRouter:
         )
 
 
+class _NativeRateLimiterView:
+    """Dict-like view backed directly by Rust ``NativeMeshRouter`` rate limiter."""
+
+    def __init__(self, native_router: Any) -> None:
+        self._native = native_router
+
+    def __len__(self) -> int:
+        return int(self._native.rate_limiter_peer_count())
+
+    def __contains__(self, peer: object) -> bool:
+        if not isinstance(peer, str):
+            return False
+        return bool(self._native.rate_limiter_contains(peer))
+
+    def __getitem__(self, peer: str) -> list[float]:
+        val = self._native.rate_limiter_get_timestamps(peer)
+        if val is None:
+            raise KeyError(peer)
+        return list(val)
+
+    def __setitem__(self, peer: str, timestamps: list[float]) -> None:
+        self._native.rate_limiter_set_timestamps(peer, [float(ts) for ts in timestamps])
+
+    def __delitem__(self, peer: str) -> None:
+        if not self._native.rate_limiter_remove_peer(peer):
+            raise KeyError(peer)
+
+    def clear(self) -> None:
+        self._native.clear_rate_limiter()
+
+
+class _NativeRouterDedupAdapter(PacketDeduplicator):
+    """PacketDeduplicator view backed directly by ``NativeMeshRouter``'s Rust dedup."""
+
+    def __init__(
+        self,
+        native_router: Any,
+        *,
+        max_entries: int = 2000,
+        entry_ttl_seconds: float = 300.0,
+    ) -> None:
+        self.max_entries = max_entries
+        self.entry_ttl_seconds = entry_ttl_seconds
+        self._native_router = native_router
+        self._native = None
+        self._py = None
+
+    def is_duplicate(self, packet: BitchatPacket, now: float | None = None) -> bool:
+        current_time = time.time() if now is None else now
+        return bool(
+            self._native_router.dedup_is_duplicate_raw(
+                packet.sender_id,
+                packet.timestamp,
+                int(packet.message_type),
+                packet.recipient_id,
+                packet.payload,
+                current_time,
+            )
+        )
+
+    def record(self, packet: BitchatPacket, now: float | None = None) -> None:
+        current_time = time.time() if now is None else now
+        self._native_router.dedup_record_raw(
+            packet.sender_id,
+            packet.timestamp,
+            int(packet.message_type),
+            packet.recipient_id,
+            packet.payload,
+            current_time,
+        )
+
+    def check_and_record(self, packet: BitchatPacket, now: float | None = None) -> bool:
+        current_time = time.time() if now is None else now
+        if self.is_duplicate(packet, now=current_time):
+            return True
+        self.record(packet, now=current_time)
+        return False
+
+    def prune_expired(self, now: float | None = None) -> int:
+        current_time = time.time() if now is None else now
+        return int(self._native_router.dedup_prune_expired(current_time))
+
+    def clear(self) -> None:
+        self._native_router.dedup_clear()
+
+    def __len__(self) -> int:
+        return int(self._native_router.dedup_size())
+
+
 class MeshRouter:
-    """Evaluates incoming packets against mesh rules, TTL, deduplication, and safety."""
+    """Authoritative mesh router backed by Rust ``NativeMeshRouter`` (single-pass)."""
 
     def __init__(
         self,
@@ -290,7 +379,6 @@ class MeshRouter:
         rate_limit_per_peer: int = DEFAULT_PEER_RATE_LIMIT,
     ) -> None:
         self._local_peer_id = bytes(local_peer_id)
-        self.deduplicator = deduplicator or PacketDeduplicator()
         self.store_forward_queue = store_forward_queue or StoreAndForwardQueue()
         self._max_relay_ttl = max_relay_ttl
         self.relay_jitter_min = relay_jitter_min
@@ -298,27 +386,46 @@ class MeshRouter:
         self._rate_limit_per_peer = rate_limit_per_peer
         self._max_routes = DEFAULT_MAX_ROUTES
         self._route_ttl_seconds = DEFAULT_ROUTE_TTL_SECONDS
+        self._uses_external_deduplicator = deduplicator is not None
 
         self._native: Any | None = None
+        self._py: PyMeshRouter | None = None
         if HAS_NATIVE_CORE and hasattr(_core, "NativeMeshRouter"):
+            dedup_max = deduplicator.max_entries if deduplicator is not None else 2000
+            dedup_ttl = (
+                deduplicator.entry_ttl_seconds if deduplicator is not None else 300.0
+            )
             self._native = _core.NativeMeshRouter(
                 self._local_peer_id,
                 max_relay_ttl,
                 rate_limit_per_peer,
                 self._max_routes,
                 self._route_ttl_seconds,
-                self.deduplicator.max_entries,
-                self.deduplicator.entry_ttl_seconds,
+                dedup_max,
+                dedup_ttl,
             )
-        self._py = PyMeshRouter(
-            local_peer_id=self._local_peer_id,
-            deduplicator=self.deduplicator,
-            store_forward_queue=self.store_forward_queue,
-            max_relay_ttl=max_relay_ttl,
-            relay_jitter_min=relay_jitter_min,
-            relay_jitter_max=relay_jitter_max,
-            rate_limit_per_peer=rate_limit_per_peer,
-        )
+            self._rate_limiter_view: Any = _NativeRateLimiterView(self._native)
+            self.deduplicator: PacketDeduplicator = (
+                deduplicator
+                if deduplicator is not None
+                else _NativeRouterDedupAdapter(
+                    self._native,
+                    max_entries=dedup_max,
+                    entry_ttl_seconds=dedup_ttl,
+                )
+            )
+        else:
+            self.deduplicator = deduplicator or PacketDeduplicator()
+            self._py = PyMeshRouter(
+                local_peer_id=self._local_peer_id,
+                deduplicator=self.deduplicator,
+                store_forward_queue=self.store_forward_queue,
+                max_relay_ttl=max_relay_ttl,
+                relay_jitter_min=relay_jitter_min,
+                relay_jitter_max=relay_jitter_max,
+                rate_limit_per_peer=rate_limit_per_peer,
+            )
+            self._rate_limiter_view = self._py._rate_limiter
 
     @property
     def local_peer_id(self) -> bytes:
@@ -327,9 +434,10 @@ class MeshRouter:
     @local_peer_id.setter
     def local_peer_id(self, val: bytes) -> None:
         self._local_peer_id = bytes(val)
-        self._py.local_peer_id = self._local_peer_id
         if self._native is not None:
             self._native.local_peer_id = self._local_peer_id
+        elif self._py is not None:
+            self._py.local_peer_id = self._local_peer_id
 
     @property
     def max_relay_ttl(self) -> int:
@@ -338,9 +446,10 @@ class MeshRouter:
     @max_relay_ttl.setter
     def max_relay_ttl(self, val: int) -> None:
         self._max_relay_ttl = int(val)
-        self._py.max_relay_ttl = int(val)
         if self._native is not None:
             self._native.max_relay_ttl = int(val)
+        elif self._py is not None:
+            self._py.max_relay_ttl = int(val)
 
     @property
     def rate_limit_per_peer(self) -> int:
@@ -349,9 +458,10 @@ class MeshRouter:
     @rate_limit_per_peer.setter
     def rate_limit_per_peer(self, val: int) -> None:
         self._rate_limit_per_peer = int(val)
-        self._py.rate_limit_per_peer = int(val)
         if self._native is not None:
             self._native.rate_limit_per_peer = int(val)
+        elif self._py is not None:
+            self._py.rate_limit_per_peer = int(val)
 
     @property
     def max_routes(self) -> int:
@@ -360,9 +470,10 @@ class MeshRouter:
     @max_routes.setter
     def max_routes(self, val: int) -> None:
         self._max_routes = int(val)
-        self._py.max_routes = int(val)
         if self._native is not None:
             self._native.max_routes = int(val)
+        elif self._py is not None:
+            self._py.max_routes = int(val)
 
     @property
     def route_ttl_seconds(self) -> float:
@@ -371,29 +482,30 @@ class MeshRouter:
     @route_ttl_seconds.setter
     def route_ttl_seconds(self, val: float) -> None:
         self._route_ttl_seconds = float(val)
-        self._py.route_ttl_seconds = float(val)
         if self._native is not None:
             self._native.route_ttl_seconds = float(val)
+        elif self._py is not None:
+            self._py.route_ttl_seconds = float(val)
 
     @property
-    def _rate_limiter(self) -> dict[str, list[float]]:
-        return self._py._rate_limiter
+    def _rate_limiter(self) -> Any:
+        return self._rate_limiter_view
 
     def prune_rate_limiter(self, max_age: float = 1.0, now: float | None = None) -> int:
-        """Prune empty or expired peer entries from rate limiter dict."""
+        """Prune empty or expired peer entries from rate limiter."""
         current_time = time.time() if now is None else now
-        py_res = self._py.prune_rate_limiter(max_age=max_age, now=current_time)
         if self._native is not None:
-            self._native.prune_rate_limiter(max_age, current_time)
-        return py_res
+            return int(self._native.prune_rate_limiter(max_age, current_time))
+        assert self._py is not None
+        return self._py.prune_rate_limiter(max_age=max_age, now=current_time)
 
     def is_rate_limited(self, sender_hex: str, now: float | None = None) -> bool:
         """Check if sender has exceeded allowed packet rate within the last second."""
         current_time = time.time() if now is None else now
-        py_limited = self._py.is_rate_limited(sender_hex, now=current_time)
         if self._native is not None:
-            self._native.is_rate_limited(sender_hex, current_time)
-        return py_limited
+            return bool(self._native.is_rate_limited(sender_hex, current_time))
+        assert self._py is not None
+        return self._py.is_rate_limited(sender_hex, now=current_time)
 
     @property
     def routes(self) -> dict[str, RouteEntry]:
@@ -405,6 +517,7 @@ class MeshRouter:
                 )
                 for dest, next_hop, hop_count, updated_at in self._native.get_routes()
             }
+        assert self._py is not None
         return self._py.routes
 
     @property
@@ -422,11 +535,13 @@ class MeshRouter:
         current_time = time.time() if now is None else now
         dest_key = _normalize_route_key(destination)
         next_hop_str = _normalize_route_key(next_hop)
+        if self._native is not None:
+            self._native.add_route(dest_key, next_hop_str, hop_count, current_time)
+            return
+        assert self._py is not None
         self._py.add_route(
             dest_key, next_hop_str, hop_count=hop_count, now=current_time
         )
-        if self._native is not None:
-            self._native.add_route(dest_key, next_hop_str, hop_count, current_time)
 
     def get_next_hop(
         self, destination: str | bytes, now: float | None = None
@@ -436,24 +551,27 @@ class MeshRouter:
         dest_key = _normalize_route_key(destination)
         if self._native is not None:
             return self._native.get_next_hop(dest_key, current_time)
+        assert self._py is not None
         return self._py.get_next_hop(dest_key, now=current_time)
 
     def remove_route(self, destination: str | bytes) -> None:
         """Remove a route from the routing table."""
         dest_key = _normalize_route_key(destination)
-        self._py.remove_route(dest_key)
         if self._native is not None:
             self._native.remove_route(dest_key)
+            return
+        assert self._py is not None
+        self._py.remove_route(dest_key)
 
     def prune_routes(
         self, max_age: float | None = None, now: float | None = None
     ) -> int:
         """Prune expired routes older than max_age (defaults to route_ttl_seconds)."""
         current_time = time.time() if now is None else now
-        self._py.prune_routes(max_age=max_age, now=current_time)
         if self._native is not None:
             return int(self._native.prune_routes(max_age, current_time))
-        return 0
+        assert self._py is not None
+        return self._py.prune_routes(max_age=max_age, now=current_time)
 
     def get_relay_jitter(self) -> float:
         """Return random jitter delay in seconds to mitigate radio collision."""
@@ -465,21 +583,17 @@ class MeshRouter:
         ingress_source: str | None = None,
         now: float | None = None,
     ) -> RoutingDecision:
-        """Evaluate an incoming packet and determine local and relay actions."""
+        """Evaluate an incoming packet in a single native Rust pass."""
         current_time = time.time() if now is None else now
 
         if self._native is not None:
-            is_not_self = packet.sender_id != self._local_peer_id
-            rate_limited = (
-                self.is_rate_limited(packet.sender_id.hex(), now=current_time)
-                if is_not_self
-                else None
-            )
-            is_dup = (
-                self.deduplicator.check_and_record(packet, now=current_time)
-                if is_not_self and not rate_limited and packet.ttl > 0
-                else None
-            )
+            is_dup_override: bool | None = None
+            if self._uses_external_deduplicator:
+                is_not_self = packet.sender_id != self._local_peer_id
+                if is_not_self and packet.ttl > 0:
+                    is_dup_override = self.deduplicator.check_and_record(
+                        packet, now=current_time
+                    )
             (
                 should_process_locally,
                 relay_ttl,
@@ -495,8 +609,8 @@ class MeshRouter:
                 packet.payload,
                 ingress_source,
                 current_time,
-                is_dup,
-                rate_limited,
+                is_dup_override,
+                None,
             )
             if drop_reason is not None and drop_reason.startswith(
                 "Rate limit exceeded"
@@ -526,6 +640,7 @@ class MeshRouter:
                 drop_reason=drop_reason,
             )
 
+        assert self._py is not None
         return self._py.evaluate_incoming(
             packet, ingress_source=ingress_source, now=current_time
         )

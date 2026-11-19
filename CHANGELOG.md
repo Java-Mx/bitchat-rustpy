@@ -5,6 +5,28 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-11-19
+
+### Added
+- **Authoritative Native Noise XX Session Integration (`rust/bitchat-core/src/noise.rs`, `src/bitchat/crypto/sessions.py`):** Migrated `NoiseSession` to delegate authoritatively to Rust `NativeNoiseSession` (with embedded 12-phase `NativeHandshakeStateMachine`), eliminating duplicate Python/Rust cipher states and preventing unzeroized symmetric key copies from entering Python heap memory. Retained `PyNoiseSession` strictly as a pure-Python differential reference and non-native fallback.
+- **Cohesive Single-Crossing Native Protocol Engine (`rust/bitchat-core/src/engine.rs`):** Implemented `NativeProtocolEngine` executing wire decode, fragment reassembly, mesh routing/dedup/rate-limiting, protocol message dispatch (`0x01`, `0x04`, `0x0A`, `0x10`, `0x11`, `0x12`, `0x13`, `0x25`), Noise XX state advancement, collision-safe identity binding, and outbound wire encoding in a single FFI crossing (7.28x faster inbound DM pipeline and 132x lower Python `tracemalloc` peak allocation).
+- **Stage 3 Native Peer State Engine (`rust/bitchat-core/src/engine.rs`, `src/bitchat/app/session_coordinator.py`):** Implemented `NativePeerStateEngine` owning bounded peer tables, anti-spoofing nickname validation, bounded pending direct-message queues (`32` per peer / `512` global), and collision-safe identity bindings (`peer_id <-> fingerprint` with reverse collision index).
+- **Controlled Legacy `bitchat-tui` Peer-ID Interoperability (`rust/bitchat-core/src/protocol.rs`, `noise.rs`, `engine.rs`):** Added `classify_peer_id_raw` and `normalize_peer_id_raw` recognizing exact 4-byte random zero-extended legacy TUI identifiers (`XXXXXXXX00000000`) while keeping modern RustPy `SHA-256(X25519_pub)[:8]` binding strict. Legacy peer IDs are bound only after Noise XX static-key authentication, checked against collision-safe pinned fingerprints, and explicitly distinguished between `authenticated` (Noise possession) and `verified` (out-of-band user confirmation).
+- **`NoiseIdentityAnnounce` (`0x13`) & `DeliveryAck` (`0x0A`) Integration:** Added native Rust `parse_noise_identity_announce_raw` validation and integrated `NativeAckTracker` into `SessionCoordinator` without permitting unauthenticated announces to overwrite trusted identity mappings.
+- **Cross-Implementation Interoperability Test Suite (`tests/interoperability/test_tui_interop.py`):** Added comprehensive tests verifying `bitchat-tui` wire compatibility, legacy peer-ID bidirectional encrypted messaging, impostor collision rejection, BLE Central ↔ RustPy GATT Peripheral exchange, BLE MTU-aware chunking, nonce-0 replay rejection, nonce exhaustion fail-closed behavior, and `NativeNoiseSession` vs `PyNoiseSession` cross-engine differential parity.
+- **Phase 2.2 Benchmark Suite & Engineering Report (`scripts/benchmark_phase22.py`, `docs/release/PHASE-2.2-IMPLEMENTATION-AND-VERIFICATION-REPORT.md`):** Added reproducible Python-vs-Rust latency, FFI crossing, and heap memory benchmarks.
+
+### Changed
+- **Eliminated Duplicate Python+Rust Mesh Execution (`src/bitchat/mesh/router.py`, `src/bitchat/mesh/store_forward.py`):** Removed parallel `PyMeshRouter` and `PyStoreAndForwardQueue` execution when native `_bitchat_core` is loaded; `NativeMeshRouter` and `NativeStoreAndForwardQueue` are now the sole authoritative runtime owners with single-pass `evaluate_incoming_raw`.
+- **Native LAN Discovery IP Rate Limiting (`rust/bitchat-core/src/lan.rs`, `src/bitchat/network/discovery.py`):** Wired `LANDiscovery` to use `NativeIpRateLimiter` natively instead of a Python dictionary.
+- **MTU-Aware BLE Write Chunking (`src/bitchat/ble/connection.py`, `src/bitchat/ble/transport.py`, `src/bitchat/protocol/fragmentation.py`):** Wired negotiated controller ATT MTU detection (`client.mtu_size`) into `NativeBleConnectionEngine` and `compute_ble_write_chunk_size`, dynamically chunking outbound packets when a controller negotiates a constrained ATT MTU.
+- **Event-Driven Handshake Wait (`src/bitchat/app/session_coordinator.py`):** Replaced the `asyncio.sleep(0.04)` polling loop during `NoiseEncrypted` arrival with an explicit per-peer `asyncio.Event` bounded wait.
+
+### Security
+- **Noise Transport Nonce Exhaustion Fail-Closed (`rust/bitchat-core/src/noise.rs`, `src/bitchat/crypto/noise.py`):** Enforced hard ceiling `NOISE_MAX_TRANSPORT_NONCE = u32::MAX` (with `needs_rekey()` warning at `1_000_000_000`), failing closed with `InvalidNonceError` and invalidating transport ciphers so 4-byte wire nonces can never wrap around or be reused.
+- **Zero Python Key Copies in Active Native Sessions:** Removed eager copying of `NativeNoiseCipherState.key` into unzeroized Python `bytes` during initialization; active `NoiseSession` instances keep transport keys strictly inside `zeroize::ZeroizeOnDrop`-protected Rust memory.
+- **Reconnect Key Invalidation:** Inbound `NoiseHandshakeInit` on an established session cleanly resets and zeroizes stale transport ciphers before starting fresh ephemeral handshake state.
+
 ## [0.3.2] - 2026-11-19
 
 ### Added

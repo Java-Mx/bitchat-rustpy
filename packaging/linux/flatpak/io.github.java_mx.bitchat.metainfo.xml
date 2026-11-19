@@ -28,6 +28,11 @@
     <binary>bitchat</binary>
   </provides>
   <releases>
+    <release version="0.3.3" date="2026-11-19">
+      <description>
+        <p>Phase 2.2 release: Authoritative Rust Noise XX session integration, single-crossing NativeProtocolEngine, Stage 3 NativePeerStateEngine with collision-safe legacy bitchat-tui peer-ID compatibility, nonce exhaustion fail-closed protection, single-pass MeshRouter/StoreAndForwardQueue, NativeIpRateLimiter, and MTU-aware BLE chunking.</p>
+      </description>
+    </release>
     <release version="0.3.2" date="2026-11-19">
       <description>
         <p>Phase 2 release: Native Rust cryptography (X25519, Ed25519, ChaCha20-Poly1305, AES-256-GCM, HKDF, PBKDF2), Noise XX session engine with zeroize memory scrubbing, deterministic 12-phase handshake state machine, and LAN/BLE connection reliability fixes.</p>

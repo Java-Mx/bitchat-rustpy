@@ -153,14 +153,16 @@ When two peers attempt to initiate a private conversation simultaneously:
 
 ---
 
-## 9. Native Rust (`rust/bitchat-core`) & Python Implementation Details
+## 9. Native Rust (`rust/bitchat-core`) & Authoritative Session Ownership (`v0.3.3`)
 
-In `rust/bitchat-core/src/noise.rs` (`bitchat._bitchat_core`) and `bitchat.crypto.noise`, the following security and observability guarantees are enforced:
+In `rust/bitchat-core/src/noise.rs` (`NativeNoiseSession`) and `rust/bitchat-core/src/engine.rs` (`NativeProtocolEngine`, `NativePeerStateEngine`), Rust is the single authoritative owner of Noise handshake state, transport cipher state, nonce counters, replay windows, and secret zeroization (`zeroize::ZeroizeOnDrop`):
 
-1. **Fail-Closed on Payload Decryption Failure:** The reference implementation continues the handshake even if payload decryption fails (noted in comments as for debugging). Both our Rust `NativeNoiseSymmetricState` and Python `NoiseSymmetricState` treat this as a fatal `AuthenticationError`, failing closed to prevent forged payloads.
+1. **Fail-Closed on Payload Decryption Failure:** Any handshake or transport AEAD decryption failure aborts closed (`AuthenticationError` / `DecryptionError`) without falling back to legacy AES-256-GCM or plaintext, and never records a failed nonce in the replay window.
 2. **Replay Window & Nonce 0 Protection:** A bounded 1,024-entry sliding window (`NOISE_REPLAY_WINDOW_SIZE = 1024`) validates all transport nonces including wire nonce `0`, marking a nonce seen only after AEAD authentication succeeds.
-3. **Transport Cipher Direction:** Confirmed matching the reference fix (lines 1235–1240):
+3. **Nonce Exhaustion Fail-Closed:** Because transport nonces are encoded as 4-byte Little-Endian counters on the wire, `NativeNoiseCipherState` enforces a hard ceiling at `NOISE_MAX_TRANSPORT_NONCE = u32::MAX` (with a soft `needs_rekey()` warning at `1_000_000_000`). Reaching the ceiling fails closed (`InvalidNonceError`) and invalidates the session ciphers so wire nonces can never wrap or repeat.
+4. **Transport Cipher Direction:** Confirmed matching the reference fix:
    - Initiator: `send = c1`, `receive = c2`
    - Responder: `send = c2`, `receive = c1`
-4. **Deterministic 12-Phase Observable Handshake State Machine:** Both LAN and BLE sessions progress through explicit observable phases (`Discovered`, `Connecting`, `TransportConnected`, `GattReady`, `HandshakeInitiated`, `AwaitingMessage2`, `AwaitingMessage3`, `AuthenticatingIdentity`, `Established`, `Failed`, `Closing`, `Closed`) managed by `NativeHandshakeStateMachine` with secret-redacted diagnostic reports.
+5. **Deterministic 12-Phase Observable Handshake State Machine:** Embedded directly inside `NativeNoiseSession` (`Discovered`, `Connecting`, `TransportConnected`, `GattReady`, `HandshakeInitiated`, `AwaitingMessage2`, `AwaitingMessage3`, `AuthenticatingIdentity`, `Established`, `Failed`, `Closing`, `Closed`) with secret-redacted diagnostic reports.
+6. **Controlled Legacy `bitchat-tui` Peer-ID Compatibility & Collision Protection:** Modern peers require strict `SHA-256(remote_x25519_public)[:8] == peer_id`. Legacy 4-byte-zero-extended TUI peer IDs (`XXXXXXXX00000000`) are bound only after Noise XX static-key authentication, protected against silent reassignment and reverse fingerprint collisions, and explicitly separated into `authenticated` vs. user-`verified` trust levels.
 

@@ -3,14 +3,14 @@ BITCHAT TERMS OF USE & OPERATIONAL NOTICE
 
 DRAFT — LEGAL REVIEW REQUIRED:
 This document is a draft operational notice and terms disclosure for the
-open-source BitChat project (v0.3.2). It supplements — and does not restrict,
+open-source BitChat project (v0.3.3). It supplements — and does not restrict,
 replace, or override — the permissions granted under the MIT License. Before
 distributing BitChat in a commercial, enterprise, or regulated environment,
 this notice should be reviewed by the project publisher or qualified legal
 counsel.
 
 Effective Date: November 19, 2026
-Applicable Release: BitChat v0.3.2
+Applicable Release: BitChat v0.3.3
 Repository: https://github.com/Java-Mx/bitchat-rustpy
 
 
@@ -78,7 +78,7 @@ you configure and operate the software:
   independent third-party cryptographic or security audit. Do not rely on
   BitChat for life-safety, emergency, or critical high-threat operations.
 - Ephemeral Chat History: Chat messages are held in RAM only during the active
-  session and are not saved to disk in v0.3.2.
+  session and are not saved to disk in v0.3.3.
 
 
 6. DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY

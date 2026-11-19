@@ -46,6 +46,12 @@ NOISE_PROTOCOL_NAME: str = "Noise_XX_25519_ChaChaPoly_SHA256"
 NOISE_REPLAY_WINDOW_SIZE: int = 1024
 """Sliding window size for replay protection (matching Rust constant)."""
 
+NOISE_NONCE_REKEY_WARNING_THRESHOLD: int = 1_000_000_000
+"""Soft rekey advisory threshold (matching Rust constant)."""
+
+NOISE_MAX_TRANSPORT_NONCE: int = 0xFFFF_FFFF
+"""Hard transport nonce ceiling (u32::MAX) preventing 4-byte wire nonce wraparound."""
+
 _NONCE_SIZE_BYTES: int = 4
 """Wire size of the nonce prefix prepended to transport ciphertext (4 bytes LE)."""
 
@@ -205,9 +211,24 @@ class PyNoiseCipherState:
             self._highest_received_nonce = received_nonce
         self._replay_window.add(received_nonce)
 
+    def is_nonce_exhausted(self) -> bool:
+        if self._use_extracted_nonce:
+            return self._nonce >= NOISE_MAX_TRANSPORT_NONCE
+        return self._nonce >= (1 << 64) - 1
+
+    def needs_rekey(self) -> bool:
+        return (
+            self._use_extracted_nonce
+            and self._nonce >= NOISE_NONCE_REKEY_WARNING_THRESHOLD
+        )
+
     def encrypt(self, plaintext: bytes, aad: bytes) -> bytes:
         if self._key is None:
             raise NoiseStateError("NoiseCipherState: no key initialised (encrypt)")
+        if self.is_nonce_exhausted():
+            raise InvalidNonceError(
+                "Noise transport nonce exhausted; session rekey or termination required"
+            )
         current_nonce = self._nonce
         chacha_nonce = self._build_chacha_nonce(current_nonce)
         try:
@@ -569,17 +590,10 @@ class NoiseCipherState:
         use_extracted_nonce: bool = False,
         _native_instance: Any | None = None,
     ) -> None:
-        self._key: bytes | None = bytes(key) if key is not None else None
         self._use_extracted_nonce: bool = use_extracted_nonce
         if _native_instance is not None:
             self._native = _native_instance
             self._py: PyNoiseCipherState | None = None
-            if (
-                self._key is None
-                and hasattr(_native_instance, "key")
-                and _native_instance.key is not None
-            ):
-                self._key = bytes(_native_instance.key)
         elif HAS_NATIVE_CORE and hasattr(_core, "NativeNoiseCipherState"):
             try:
                 self._native = _core.NativeNoiseCipherState(
@@ -592,6 +606,33 @@ class NoiseCipherState:
         else:
             self._native = None
             self._py = PyNoiseCipherState(key, use_extracted_nonce=use_extracted_nonce)
+
+    @property
+    def _key(self) -> bytes | None:
+        if self._native is not None:
+            raw = self._native.key
+            return bytes(raw) if raw is not None else None
+        assert self._py is not None
+        return self._py._key
+
+    @_key.setter
+    def _key(self, val: bytes | None) -> None:
+        if self._native is not None:
+            if val is None:
+                self._native.clear_key()
+            else:
+                prev_nonce = int(self._native.nonce)
+                prev_highest = int(self._native.highest_received_nonce)
+                prev_window = set(self._native.replay_window)
+                try:
+                    self._native.initialize_key(bytes(val))
+                except ValueError as exc:
+                    raise_mapped_error(exc)
+                self._native.nonce = prev_nonce
+                self._native.highest_received_nonce = prev_highest
+                self._native.replay_window = prev_window
+        elif self._py is not None:
+            self._py._key = bytes(val) if val is not None else None
 
     @property
     def _nonce(self) -> int:
@@ -644,7 +685,6 @@ class NoiseCipherState:
 
     def initialize_key(self, key: bytes) -> None:
         """Set (or reset) the cipher key."""
-        self._key = bytes(key)
         if self._native is not None:
             try:
                 self._native.initialize_key(bytes(key))
@@ -656,12 +696,30 @@ class NoiseCipherState:
 
     def clear_key(self) -> None:
         """Clear and zeroize the cipher key."""
-        self._key = None
         if self._native is not None:
             self._native.clear_key()
             return
         if self._py is not None:
             self._py.clear_key()
+
+    def needs_rekey(self) -> bool:
+        """Return True if transport nonce has crossed the rekey warning threshold."""
+        if self._native is not None and hasattr(self._native, "needs_rekey"):
+            return bool(self._native.needs_rekey())
+        if self._py is not None:
+            return self._py.needs_rekey()
+        return (
+            self._use_extracted_nonce
+            and self._nonce >= NOISE_NONCE_REKEY_WARNING_THRESHOLD
+        )
+
+    def is_nonce_exhausted(self) -> bool:
+        """Return True if transport nonce has reached the hard ceiling."""
+        if self._native is not None and hasattr(self._native, "is_nonce_exhausted"):
+            return bool(self._native.is_nonce_exhausted())
+        if self._py is not None:
+            return self._py.is_nonce_exhausted()
+        return self._use_extracted_nonce and self._nonce >= NOISE_MAX_TRANSPORT_NONCE
 
     def encrypt(self, plaintext: bytes, aad: bytes) -> bytes:
         """Encrypt with the current nonce, then advance the counter."""
@@ -859,3 +917,39 @@ class NoiseHandshakeState:
                 raise_mapped_error(exc)
         assert self._py is not None
         return self._py.read_message(message)
+
+
+def py_parse_noise_identity_announce(payload: bytes) -> tuple[bytes, str]:
+    """Pure-Python parser for `0x13 NoiseIdentityAnnounce` payloads."""
+    raw = bytes(payload)
+    if len(raw) not in (32, 64):
+        raise AuthenticationError(
+            "Invalid NoiseIdentityAnnounce payload length: "
+            f"expected 32 or 64 bytes, got {len(raw)}"
+        )
+    try:
+        validated = validate_public_key(raw[:32])
+    except InvalidKeyError as exc:
+        raise AuthenticationError(
+            "NoiseIdentityAnnounce contains invalid X25519 static public key"
+        ) from exc
+    digest = hashlib.sha256(validated).digest()
+    if len(raw) == 64:
+        import hmac
+
+        if not hmac.compare_digest(digest, raw[32:64]):
+            raise AuthenticationError(
+                "NoiseIdentityAnnounce identity hash does not match static public key"
+            )
+    return validated, digest.hex()
+
+
+def parse_noise_identity_announce(payload: bytes) -> tuple[bytes, str]:
+    """Validate and decode a `0x13 NoiseIdentityAnnounce` payload via Rust core."""
+    if HAS_NATIVE_CORE and hasattr(_core, "parse_noise_identity_announce_raw"):
+        try:
+            pk, fp = _core.parse_noise_identity_announce_raw(bytes(payload))
+            return bytes(pk), str(fp)
+        except ValueError as exc:
+            raise_mapped_error(exc)
+    return py_parse_noise_identity_announce(payload)

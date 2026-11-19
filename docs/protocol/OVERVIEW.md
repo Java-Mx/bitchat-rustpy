@@ -1,6 +1,6 @@
-# BitChat Protocol Overview (`v0.3.1`)
+# BitChat Protocol Overview (`v0.3.3`)
 
-This document provides a technical overview of the BitChat binary wire protocol (Version 1), defining its packet flow, constants, and the actual hybrid Rust (`rust/bitchat-core`) + Python (`src/bitchat/`) implementation structure in `v0.3.1`.
+This document provides a technical overview of the BitChat binary wire protocol (Version 1), defining its packet flow, constants, and the actual hybrid Rust (`rust/bitchat-core`) + Python (`src/bitchat/`) implementation structure in `v0.3.3`.
 
 ## Key Protocol Constants
 
@@ -49,17 +49,17 @@ flowchart TD
 4. **Session Coordination & Cryptography (`src/bitchat/app/session_coordinator.py` & `src/bitchat/crypto/`)**:
    - Processes `Noise_XX_25519_ChaChaPoly_SHA256` handshake messages (`0x10`, `0x11`), verifies post-handshake `peer_id == SHA-256(x25519_pub)[:8]` binding and TOFU contact fingerprints, and decrypts `NoiseEncrypted` (`0x12`) transport frames.
 
-## Actual Module Architecture Mapping (`v0.3.1`)
+## Actual Module Architecture Mapping (`v0.3.3`)
 
 | Subsystem | Rust Core (`rust/bitchat-core/src/`) | Python Module (`src/bitchat/`) | Responsibility |
 |---|---|---|---|
-| **Constants & Wire Types** | `protocol.rs` | `protocol/constants.py`, `protocol/packet.py` | `MessageType` enum (`0x01`–`0x25`), BLE UUIDs, header flags, `BitchatPacket` model |
+| **Constants & Wire Types** | `protocol.rs` | `protocol/constants.py`, `protocol/packet.py` | `MessageType` enum (`0x01`–`0x25`), BLE UUIDs, header flags, peer-ID classification, `BitchatPacket` model |
 | **Binary Codec & Padding** | `protocol.rs` | `protocol/encoder.py`, `protocol/decoder.py` | Big-endian packet serialization, deserialization, and block padding (`256`–`2048` B) |
-| **Fragmentation & Reassembly** | `fragmentation.rs` (`NativeFragmentReassembler`) | `protocol/fragmentation.py`, `protocol/reassembly.py` | Splitting packets `> 500` B into `150` B chunks with 13 B headers and bounded reassembly |
+| **Fragmentation & Reassembly** | `fragmentation.rs` (`NativeFragmentReassembler`) | `protocol/fragmentation.py`, `protocol/reassembly.py` | Splitting packets `> 500` B (or negotiated ATT MTU) into chunks with 13 B headers and bounded reassembly |
 | **TCP Stream Framing** | `framing.rs` (`NativeStreamFramer`) | `network/framing.py` | 8-byte `BC\x01\x00` + length-prefixed stream framing for LAN TCP connections |
-| **Mesh Routing & Dedup** | `mesh.rs` (`NativePacketDeduplicator`, `NativePeerRateLimiter`) | `mesh/dedup.py`, `mesh/router.py`, `mesh/store_forward.py` | SHA-256 `[:16]` deduplication, peer rate limiting, TTL relay, and Store-and-Forward |
-| **Noise XX & Crypto** | *(Planned Stage 2)* | `crypto/noise.py`, `sessions.py`, `identity.py`, `aes_gcm.py`, `ed25519.py`, `x25519.py`, `hkdf.py`, `pbkdf2.py` | `Noise_XX_25519_ChaChaPoly_SHA256`, `AES-256-GCM`, `Ed25519`, `X25519`, `LocalIdentity` |
-| **Session Coordinator** | *(Planned Stage 6)* | `app/session_coordinator.py`, `app/application.py` | Handshake orchestration, transport switching, delivery ACKs, read receipts |
-| **BLE & LAN Transports** | *(Planned Stages 4–5)* | `ble/`, `network/`, `transport/` | Bleak / WinRT / BlueZ D-Bus GATT Central & Peripheral; LAN UDP (`41234`) & TCP (`41235`) |
+| **Mesh Routing, Dedup & Peer State** | `mesh.rs` (`NativeMeshRouter`, `NativePacketDeduplicator`, `NativePeerRateLimiter`, `NativeStoreAndForwardQueue`, `NativeAckTracker`), `engine.rs` (`NativePeerStateEngine`, `NativeProtocolEngine`) | `mesh/dedup.py`, `mesh/router.py`, `mesh/store_forward.py` | Authoritative single-pass routing, SHA-256 `[:16]` deduplication, peer rate limiting, TTL relay, Store-and-Forward, collision-safe identity/trust state, and single-FFI inbound pipeline |
+| **Noise XX & Crypto** | `crypto.rs`, `noise.rs` (`NativeNoiseSession`, `NativeHandshakeStateMachine`, `NativeNoiseCipherState`, `NativeLocalIdentity`) | `crypto/noise.py`, `sessions.py`, `identity.py`, `aes_gcm.py`, `ed25519.py`, `x25519.py`, `hkdf.py`, `pbkdf2.py` | Authoritative `Noise_XX_25519_ChaChaPoly_SHA256` (zeroize-on-drop, strict nonce-0 replay window, nonce exhaustion fail-closed), `AES-256-GCM`, `Ed25519`, `X25519`, `HKDF`, `PBKDF2` |
+| **Session Coordinator** | `engine.rs` (`NativeProtocolEngine` — Stage 3 active; Stage 6 full async planned) | `app/session_coordinator.py`, `app/application.py` | Event-driven handshake orchestration, transport switching, `0x13 NoiseIdentityAnnounce`, `0x0A DeliveryAck`, bounded pending DM queues |
+| **BLE & LAN Transports** | `lan.rs` (`NativeLanEngine`, `NativeIpRateLimiter`), `ble.rs` (`NativeBleConnectionEngine`, `compute_ble_write_chunk_size`) | `ble/`, `network/`, `transport/` | Bleak / WinRT / BlueZ D-Bus GATT Central & Peripheral with ATT MTU-aware chunking; LAN UDP (`41234`) & TCP (`41235`) |
 | **Local Storage & Logging** | *(Planned Stage 6)* | `storage/config.py`, `logging/__init__.py` | `~/.bitchat/config.json`, `~/.bitchat/identity.json` (`0600` / Windows DACL), redacted `bitchat.log` |
 | **TUI & CLI** | *(Planned Stage 7)* | `tui/`, `commands/parser.py`, `__main__.py` | Textual terminal UI (`HomeScreen`, `ChatScreen`, `SettingsScreen`) and CLI commands |

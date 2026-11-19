@@ -1,4 +1,4 @@
-# Uninstalling BitChat (`v0.3.1`)
+# Uninstalling BitChat (`v0.3.3`)
 
 BitChat includes a built-in, cross-platform uninstallation engine (`bitchat.platform.uninstaller`) as well as native OS uninstaller hooks so you can cleanly remove BitChat regardless of how it was installed (Windows `.exe` installer, `pip`, `uv`, `pipx`, `.deb`, `AppImage`, or `Flatpak`).
 
@@ -63,7 +63,7 @@ bitchat --uninstall --purge --yes
 
 If you previously installed BitChat using **both** the standalone Windows installer (`%LOCALAPPDATA%\Programs\BitChat\bitchat.exe`) **and** `pip install` inside one or more Python installations (for example, `C:\Users\<user>\AppData\Local\Programs\Python\Python314\Scripts\bitchat.exe`), running only the Windows installer's uninstaller in older releases removed the standalone folder while leaving `Python314\Scripts\bitchat.exe` on your `PATH`.
 
-In **BitChat `v0.3.1`**, both `bitchat --uninstall` and the Windows Inno Setup uninstaller (`unins000.exe`) automatically scan all discovered Python `Scripts` directories, `PATH` locations, and site-packages to remove stray `bitchat.exe` console-script launchers so that `bitchat` is no longer recognized in new terminals after uninstalling.
+In **BitChat `v0.3.1+`** (including `v0.3.3`), both `bitchat --uninstall` and the Windows Inno Setup uninstaller (`unins000.exe`) automatically scan all discovered Python `Scripts` directories, `PATH` locations, and site-packages to remove stray `bitchat.exe` console-script launchers so that `bitchat` is no longer recognized in new terminals after uninstalling.
 
 ### 3.2 Uninstalling via Windows Settings or `unins000.exe`
 
@@ -121,7 +121,7 @@ AppImages are self-contained single-file binaries that do not install system-wid
 
 ```bash
 # Remove the AppImage file
-rm -f ./BitChat-0.3.1-x86_64.AppImage
+rm -f ./BitChat-0.3.3-x86_64.AppImage
 
 # Optional: remove desktop integration and user data
 rm -f ~/.local/share/applications/bitchat.desktop

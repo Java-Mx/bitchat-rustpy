@@ -210,9 +210,52 @@ jobs:
             packaging/windows/winget/Java-Mx.BitChat.yaml
             manifests/
 
+  build-macos:
+    name: Build macOS ABI3 Wheel (Apple Silicon arm64)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - name: Install dependencies (uv sync --all-groups)
+        run: uv sync --all-groups
+
+      - name: Verify macOS CLI Version & Native Core Tests
+        run: |
+          uv run bitchat --version
+          uv run pytest tests/unit/test_native_core.py tests/interoperability/test_tui_interop.py tests/unit/test_package.py
+
+      - name: Build macOS ABI3 Wheel
+        run: uv build --wheel
+
+      - name: Upload macOS Distributables
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-distributables
+          path: |
+            dist/*.whl
+
   publish:
     name: Publish GitHub Release & WinGet
-    needs: [build-linux, build-windows]
+    needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     env:
       WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
@@ -232,6 +275,12 @@ jobs:
           name: windows-distributables
           path: dist-win/
 
+      - name: Download macOS Distributables
+        uses: actions/download-artifact@v8
+        with:
+          name: macos-distributables
+          path: dist-mac/
+
       - name: Organize & Verify Artifacts
         run: |
           mkdir -p packaging/windows/winget/
@@ -239,6 +288,8 @@ jobs:
           cp -r dist-win/dist/BitChat* dist/ 2>/dev/null || true
           cp -r dist-win/*.whl dist/ 2>/dev/null || true
           cp -r dist-win/dist/*.whl dist/ 2>/dev/null || true
+          cp -r dist-mac/*.whl dist/ 2>/dev/null || true
+          cp -r dist-mac/dist/*.whl dist/ 2>/dev/null || true
           for f in dist/*.whl dist/*.tar.gz; do
             if [ -f "$f" ]; then
               sha=$(sha256sum "$f" | awk '{print toupper($1)}')

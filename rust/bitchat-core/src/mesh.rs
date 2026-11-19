@@ -284,6 +284,26 @@ impl NativePeerRateLimiter {
         self.buckets.len()
     }
 
+    pub fn peer_keys(&self) -> Vec<String> {
+        self.buckets.keys().cloned().collect()
+    }
+
+    pub fn contains_peer(&self, peer: &str) -> bool {
+        self.buckets.contains_key(peer)
+    }
+
+    pub fn get_peer_timestamps(&self, peer: &str) -> Option<Vec<f64>> {
+        self.buckets.get(peer).map(|q| q.iter().copied().collect())
+    }
+
+    pub fn set_peer_timestamps(&mut self, peer: String, timestamps: Vec<f64>) {
+        self.buckets.insert(peer, VecDeque::from(timestamps));
+    }
+
+    pub fn remove_peer(&mut self, peer: &str) -> bool {
+        self.buckets.remove(peer).is_some()
+    }
+
     pub fn clear(&mut self) {
         self.buckets.clear();
     }
@@ -413,8 +433,70 @@ impl NativeMeshRouter {
         self.rate_limiter.peer_count()
     }
 
+    pub fn rate_limiter_keys(&self) -> Vec<String> {
+        self.rate_limiter.peer_keys()
+    }
+
+    pub fn rate_limiter_contains(&self, peer: &str) -> bool {
+        self.rate_limiter.contains_peer(peer)
+    }
+
+    pub fn rate_limiter_get_timestamps(&self, peer: &str) -> Option<Vec<f64>> {
+        self.rate_limiter.get_peer_timestamps(peer)
+    }
+
+    pub fn rate_limiter_set_timestamps(&mut self, peer: String, timestamps: Vec<f64>) {
+        self.rate_limiter.set_peer_timestamps(peer, timestamps);
+    }
+
+    pub fn rate_limiter_remove_peer(&mut self, peer: &str) -> bool {
+        self.rate_limiter.remove_peer(peer)
+    }
+
     pub fn clear_rate_limiter(&mut self) {
         self.rate_limiter.clear();
+    }
+
+    #[pyo3(signature = (sender_id, timestamp, message_type, recipient_id, payload, now))]
+    pub fn dedup_record_raw(
+        &mut self,
+        sender_id: &[u8],
+        timestamp: u64,
+        message_type: u8,
+        recipient_id: Option<&[u8]>,
+        payload: &[u8],
+        now: f64,
+    ) {
+        let packet_id =
+            compute_packet_id_bytes(sender_id, timestamp, message_type, recipient_id, payload);
+        self.deduplicator.record_id(packet_id, now);
+    }
+
+    #[pyo3(signature = (sender_id, timestamp, message_type, recipient_id, payload, now))]
+    pub fn dedup_is_duplicate_raw(
+        &mut self,
+        sender_id: &[u8],
+        timestamp: u64,
+        message_type: u8,
+        recipient_id: Option<&[u8]>,
+        payload: &[u8],
+        now: f64,
+    ) -> bool {
+        let packet_id =
+            compute_packet_id_bytes(sender_id, timestamp, message_type, recipient_id, payload);
+        self.deduplicator.is_id_duplicate(&packet_id, now)
+    }
+
+    pub fn dedup_prune_expired(&mut self, now: f64) -> usize {
+        self.deduplicator.prune_expired(now)
+    }
+
+    pub fn dedup_size(&self) -> usize {
+        self.deduplicator.size()
+    }
+
+    pub fn dedup_clear(&mut self) {
+        self.deduplicator.clear();
     }
 
     #[pyo3(signature = (destination, next_hop, hop_count=1, now=0.0))]
@@ -875,6 +957,13 @@ impl NativeStoreAndForwardQueue {
             }
         }
         pruned_count
+    }
+
+    pub fn peer_queue_sizes(&self) -> HashMap<String, usize> {
+        self.queues
+            .iter()
+            .map(|(k, q)| (k.clone(), q.len()))
+            .collect()
     }
 
     pub fn clear(&mut self) {

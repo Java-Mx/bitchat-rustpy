@@ -44,6 +44,7 @@ class BLEConnection:
         self._client: Any | None = None
         self._characteristic: BleakGATTCharacteristic | None = None
         self._is_subscribed: bool = False
+        self._negotiated_mtu: int | None = None
         self._lock = asyncio.Lock()
         self._pending_notifications: list[bytes] = []
         self._native_engine: Any | None = (
@@ -68,6 +69,29 @@ class BLEConnection:
     def is_ready(self) -> bool:
         """Return True if connection is established and GATT is ready."""
         return self._state == BLEConnectionState.READY and self.is_connected
+
+    @property
+    def negotiated_mtu(self) -> int | None:
+        """Negotiated ATT MTU reported by the controller, or None if unreported."""
+        return self._negotiated_mtu
+
+    @property
+    def mtu(self) -> int:
+        """Active ATT MTU for this BLE connection."""
+        if self._negotiated_mtu is not None:
+            return self._negotiated_mtu
+        if self._native_engine is not None:
+            return int(self._native_engine.mtu)
+        return 185
+
+    @property
+    def max_write_chunk_size(self) -> int:
+        """Usable GATT write payload size computed via Rust MTU sizing."""
+        if self._native_engine is not None:
+            return int(self._native_engine.max_write_chunk_size())
+        if HAS_NATIVE_CORE and hasattr(_core, "compute_ble_write_chunk_size"):
+            return int(_core.compute_ble_write_chunk_size(self.mtu))
+        return max(20, min(512, self.mtu - 3))
 
     def _on_disconnected(self, _client: Any) -> None:
         """Handle disconnection event triggered by Bleak."""
@@ -156,6 +180,11 @@ class BLEConnection:
                     )
 
                 self._state = BLEConnectionState.CONNECTED
+                raw_mtu = getattr(client, "mtu_size", None)
+                if isinstance(raw_mtu, int) and raw_mtu >= 23:
+                    self._negotiated_mtu = raw_mtu
+                    if self._native_engine is not None:
+                        self._native_engine.mtu = raw_mtu
                 logger.info("Connected to %s; discovering GATT", self.peer_address)
 
                 self._state = BLEConnectionState.DISCOVERING_GATT

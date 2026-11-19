@@ -65,13 +65,13 @@ from bitchat.protocol.reassembly import FragmentReassembler, PyFragmentReassembl
 
 
 def test_native_core_is_loaded_and_version_matches() -> None:
-    """Verify the compiled Rust extension module is loaded and reports version 0.3.2."""
+    """Verify the compiled Rust extension module is loaded and reports version 0.3.3."""
     from bitchat import __version__
 
     assert HAS_NATIVE_CORE is True
     assert _core is not None
     assert _core.native_core_version() == __version__
-    assert _core.native_core_version() == "0.3.2"
+    assert _core.native_core_version() == "0.3.3"
 
 
 @pytest.mark.parametrize(
@@ -691,3 +691,36 @@ def test_native_lan_ble_and_state_machine_primitives() -> None:
     cs.clear_key()
     assert cs.has_key() is False
     assert cs.key is None
+
+
+def test_differential_phase22_peer_state_rate_limiter_and_ble_mtu() -> None:
+    """Verify Phase 2.2 peer ID classification, NativePeerStateEngine, NativeIpRateLimiter, and BLE MTU."""
+    from bitchat.crypto.sessions import classify_peer_id, py_classify_peer_id
+    from bitchat.network.discovery import LANDiscovery
+
+    assert _core is not None
+
+    for sample in ("deadbeef00000000", "0102030405060708", "0000000000000001"):
+        assert classify_peer_id(sample) == py_classify_peer_id(sample)
+
+    assert _core.normalize_peer_id_raw("  0102030405060708  ") == "0102030405060708"
+    assert _core.compute_ble_write_chunk_size(23) == 20
+    assert _core.compute_ble_write_chunk_size(185) == 182
+    assert _core.compute_ble_write_chunk_size(600) == 512
+
+    # NativeIpRateLimiter integration inside LANDiscovery
+    disc = LANDiscovery("01" * 8, "alice", 41235)
+    assert disc._native_rate_limiter is not None
+    for _ in range(10):
+        assert disc._is_rate_limited("192.168.1.10", now=50.0) is False
+    assert disc._is_rate_limited("192.168.1.10", now=50.0) is True
+    assert disc.prune_rate_limiter(max_age=1.0, now=52.0) == 1
+    assert len(disc._rate_limiter) == 0
+
+    # NativePeerStateEngine bounded pending & collision safety
+    ps = _core.NativePeerStateEngine("0102030405060708", "Alice", 64, 2, 10)
+    assert ps.enqueue_pending_message("deadbeef00000000", "m1") is True
+    assert ps.enqueue_pending_message("deadbeef00000000", "m2") is True
+    assert ps.enqueue_pending_message("deadbeef00000000", "m3") is False
+    assert ps.drain_pending_messages("deadbeef00000000") == ["m1", "m2"]
+    assert ps.pending_message_count("deadbeef00000000") == 0

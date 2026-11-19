@@ -510,6 +510,54 @@ impl NativeIpRateLimiter {
         true
     }
 
+    /// Sliding-window rate check matching `LANDiscovery._is_rate_limited`:
+    /// auto-prunes expired entries once tracked IPs exceed 256 without dropping
+    /// still-active entries inside the current window.
+    pub fn is_rate_limited(&mut self, ip: &str, now: f64) -> bool {
+        if self.events.len() > 256 {
+            self.prune(self.window_seconds, now);
+        }
+        let cutoff = now - self.window_seconds;
+        let queue = self.events.entry(ip.to_string()).or_default();
+        while let Some(&front) = queue.front() {
+            if front < cutoff {
+                queue.pop_front();
+            } else {
+                break;
+            }
+        }
+        if queue.len() >= self.max_events {
+            return true;
+        }
+        queue.push_back(now);
+        false
+    }
+
+    pub fn prune(&mut self, max_age: f64, now: f64) -> usize {
+        let before = self.events.len();
+        self.events.retain(|_, timestamps| match timestamps.back() {
+            Some(&latest) => now - latest <= max_age,
+            None => false,
+        });
+        before.saturating_sub(self.events.len())
+    }
+
+    pub fn contains_ip(&self, ip: &str) -> bool {
+        self.events.contains_key(ip)
+    }
+
+    pub fn get_ip_timestamps(&self, ip: &str) -> Option<Vec<f64>> {
+        self.events.get(ip).map(|q| q.iter().copied().collect())
+    }
+
+    pub fn set_ip_timestamps(&mut self, ip: String, timestamps: Vec<f64>) {
+        self.events.insert(ip, VecDeque::from(timestamps));
+    }
+
+    pub fn remove_ip(&mut self, ip: &str) -> bool {
+        self.events.remove(ip).is_some()
+    }
+
     pub fn tracked_ip_count(&self) -> usize {
         self.events.len()
     }

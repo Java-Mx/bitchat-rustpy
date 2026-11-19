@@ -231,13 +231,15 @@ def py_fragment_encoded_packet(
     fragment_id: bytes | None = None,
     ttl: int = 7,
     timestamp: int | None = None,
+    chunk_size: int = FRAGMENT_CHUNK_SIZE,
+    force: bool = False,
 ) -> list[BitchatPacket]:
     """Pure-Python reference implementation of fragment_encoded_packet."""
     if not isinstance(encoded_packet, (bytes, bytearray)):
         raise PacketEncodingError("encoded_packet must be bytes")
     encoded_bytes = bytes(encoded_packet)
 
-    if len(encoded_bytes) <= FRAGMENTATION_THRESHOLD:
+    if not force and len(encoded_bytes) <= FRAGMENTATION_THRESHOLD:
         return []
 
     if (
@@ -250,7 +252,7 @@ def py_fragment_encoded_packet(
     if len(frag_id) != FRAGMENT_ID_SIZE:
         raise InvalidFragmentError(f"fragment_id must be {FRAGMENT_ID_SIZE} bytes")
 
-    chunks = py_split_chunks(encoded_bytes, FRAGMENT_CHUNK_SIZE)
+    chunks = py_split_chunks(encoded_bytes, chunk_size)
     total = len(chunks)
     ts = int(time.time() * 1000) if timestamp is None else timestamp
     orig_type_int = int(original_message_type)
@@ -290,6 +292,8 @@ def fragment_encoded_packet(
     fragment_id: bytes | None = None,
     ttl: int = 7,
     timestamp: int | None = None,
+    chunk_size: int = FRAGMENT_CHUNK_SIZE,
+    force: bool = False,
 ) -> list[BitchatPacket]:
     """Split an encoded packet into ordered fragment packets."""
     if not isinstance(encoded_packet, (bytes, bytearray)):
@@ -298,7 +302,7 @@ def fragment_encoded_packet(
         encoded_packet if type(encoded_packet) is bytes else bytes(encoded_packet)
     )
 
-    if len(encoded_bytes) <= FRAGMENTATION_THRESHOLD:
+    if not force and len(encoded_bytes) <= FRAGMENTATION_THRESHOLD:
         return []
 
     if (
@@ -331,7 +335,7 @@ def fragment_encoded_packet(
                 int(original_message_type),
                 ttl,
                 timestamp,
-                FRAGMENT_CHUNK_SIZE,
+                chunk_size,
                 fid_b,
             )
             return [
@@ -358,6 +362,8 @@ def fragment_encoded_packet(
         fragment_id=fragment_id,
         ttl=ttl,
         timestamp=timestamp,
+        chunk_size=chunk_size,
+        force=force,
     )
 
 

@@ -20,6 +20,7 @@ use crate::crypto::{
     x25519_public_from_private_slice,
 };
 use crate::errors::CoreError;
+use crate::protocol::is_legacy_tui_peer_id_bytes;
 
 #[inline]
 fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
@@ -35,6 +36,11 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 
 pub const NOISE_PROTOCOL_NAME: &str = "Noise_XX_25519_ChaChaPoly_SHA256";
 pub const NOISE_REPLAY_WINDOW_SIZE: u64 = 1024;
+pub const NOISE_NONCE_REKEY_WARNING_THRESHOLD: u64 = 1_000_000_000;
+/// Maximum transport nonce before 4-byte wire nonce overflow (`u32::MAX`).
+/// Encryption refuses to proceed once `nonce >= NOISE_MAX_TRANSPORT_NONCE` so a
+/// 4-byte LE wire nonce can never wrap around or be reused.
+pub const NOISE_MAX_TRANSPORT_NONCE: u64 = u32::MAX as u64;
 pub const NONCE_WIRE_SIZE_BYTES: usize = 4;
 pub const CHACHA_NONCE_SIZE: usize = 12;
 pub const DH_KEY_SIZE: usize = 32;
@@ -81,6 +87,7 @@ impl Drop for NativeNoiseCipherState {
 }
 
 impl NativeNoiseCipherState {
+    #[allow(clippy::too_many_arguments)]
     pub fn new_internal(key: Option<[u8; 32]>, use_extracted_nonce: bool) -> Self {
         Self {
             key,
@@ -139,11 +146,31 @@ impl NativeNoiseCipherState {
         self.replay_window.insert(received_nonce);
     }
 
+    pub fn is_nonce_exhausted_internal(&self) -> bool {
+        if self.use_extracted_nonce {
+            self.nonce >= NOISE_MAX_TRANSPORT_NONCE
+        } else {
+            self.nonce == u64::MAX
+        }
+    }
+
+    pub fn needs_rekey_internal(&self) -> bool {
+        self.use_extracted_nonce && self.nonce >= NOISE_NONCE_REKEY_WARNING_THRESHOLD
+    }
+
     pub fn encrypt_internal(&mut self, plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>, CoreError> {
         let key = self.key.as_ref().ok_or_else(|| {
             CoreError::noise_state("NoiseCipherState: no key initialised (encrypt)")
         })?;
+        if self.is_nonce_exhausted_internal() {
+            return Err(CoreError::invalid_nonce(
+                "Noise transport nonce exhausted; session rekey or termination required",
+            ));
+        }
         let current_nonce = self.nonce;
+        let next_nonce = current_nonce.checked_add(1).ok_or_else(|| {
+            CoreError::invalid_nonce("Noise cipher nonce overflow; session rekey required")
+        })?;
         let chacha_nonce_bytes = Self::build_chacha_nonce(current_nonce);
         let cipher = ChaCha20Poly1305::new_from_slice(key)
             .map_err(|_| CoreError::encryption("ChaCha20-Poly1305 key init failed"))?;
@@ -157,7 +184,7 @@ impl NativeNoiseCipherState {
             )
             .map_err(|_| CoreError::encryption("ChaCha20-Poly1305 encryption failed"))?;
 
-        self.nonce = self.nonce.saturating_add(1);
+        self.nonce = next_nonce;
         if self.use_extracted_nonce {
             let prefix = Self::counter_to_wire_bytes(current_nonce);
             let mut out = Vec::with_capacity(NONCE_WIRE_SIZE_BYTES + ciphertext.len());
@@ -314,6 +341,14 @@ impl NativeNoiseCipherState {
     pub fn use_extracted_nonce(&self) -> bool {
         self.use_extracted_nonce
     }
+
+    pub fn needs_rekey(&self) -> bool {
+        self.needs_rekey_internal()
+    }
+
+    pub fn is_nonce_exhausted(&self) -> bool {
+        self.is_nonce_exhausted_internal()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -335,6 +370,7 @@ impl Drop for NativeNoiseSymmetricState {
 }
 
 impl NativeNoiseSymmetricState {
+    #[allow(clippy::too_many_arguments)]
     pub fn new_internal(protocol_name: &str) -> Self {
         let name_bytes = protocol_name.as_bytes();
         let initial_hash = if name_bytes.len() <= 32 {
@@ -551,6 +587,7 @@ impl Drop for NativeNoiseHandshakeState {
 }
 
 impl NativeNoiseHandshakeState {
+    #[allow(clippy::too_many_arguments)]
     pub fn new_internal(
         role: HandshakeRole,
         local_static_private: &[u8],
@@ -893,6 +930,45 @@ impl NativeNoiseHandshakeState {
 }
 
 // ---------------------------------------------------------------------------
+// NoiseIdentityAnnounce (0x13) Payload Validation
+// ---------------------------------------------------------------------------
+
+/// Validate a `0x13 NoiseIdentityAnnounce` payload.
+///
+/// Accepts either:
+/// - 32 bytes: `[32B X25519 static public key]`
+/// - 64 bytes: `[32B X25519 static public key || 32B SHA-256 identity hash]`
+///
+/// Validates Curve25519 low-order rejection and verifies hash consistency when
+/// the 32-byte hash suffix is present. Returns `(static_public_key, fingerprint_hex)`.
+pub fn parse_noise_identity_announce_bytes(
+    payload: &[u8],
+) -> Result<([u8; 32], String), CoreError> {
+    if payload.len() != 32 && payload.len() != 64 {
+        return Err(CoreError::authentication(format!(
+            "Invalid NoiseIdentityAnnounce payload length: expected 32 or 64 bytes, got {}",
+            payload.len()
+        )));
+    }
+    let validated = validate_x25519_public_key_slice(&payload[..32]).map_err(|_| {
+        CoreError::authentication("NoiseIdentityAnnounce contains invalid X25519 static public key")
+    })?;
+    let digest = Sha256::digest(validated);
+    if payload.len() == 64 && !constant_time_eq(&digest, &payload[32..64]) {
+        return Err(CoreError::authentication(
+            "NoiseIdentityAnnounce identity hash does not match static public key",
+        ));
+    }
+    Ok((validated, sha256_hex(&validated)))
+}
+
+#[pyfunction]
+pub fn parse_noise_identity_announce_raw(payload: &[u8]) -> PyResult<(Vec<u8>, String)> {
+    let (pk, fp) = parse_noise_identity_announce_bytes(payload)?;
+    Ok((pk.to_vec(), fp))
+}
+
+// ---------------------------------------------------------------------------
 // NativeNoiseSession
 // ---------------------------------------------------------------------------
 
@@ -910,6 +986,12 @@ pub struct NativeNoiseSession {
     remote_static_public: Option<[u8; 32]>,
     handshake_hash: Option<[u8; 32]>,
     remote_fingerprint: Option<String>,
+    expected_fingerprint: Option<String>,
+    identity_mode: String,
+    trust_level: String,
+    allow_legacy_peer_id: bool,
+    handshake_started_at: Option<f64>,
+    state_machine: NativeHandshakeStateMachine,
 }
 
 impl Drop for NativeNoiseSession {
@@ -921,13 +1003,14 @@ impl Drop for NativeNoiseSession {
 impl NativeNoiseSession {
     #[allow(clippy::chunks_exact_to_as_chunks)]
     fn decode_hex_8_bytes(hex_str: &str) -> Result<[u8; 8], CoreError> {
-        if hex_str.len() != 16 {
+        let clean = hex_str.trim().to_ascii_lowercase();
+        if clean.len() != 16 {
             return Err(CoreError::authentication(
                 "Remote peer ID must be 16 hexadecimal characters",
             ));
         }
         let mut out = [0u8; 8];
-        for (i, chunk) in hex_str.as_bytes().chunks_exact(2).enumerate() {
+        for (i, chunk) in clean.as_bytes().chunks_exact(2).enumerate() {
             let s = std::str::from_utf8(chunk).map_err(|_| {
                 CoreError::authentication("Remote peer ID is not valid hexadecimal")
             })?;
@@ -938,7 +1021,232 @@ impl NativeNoiseSession {
         Ok(out)
     }
 
-    fn finalise_handshake(&mut self) -> Result<(), CoreError> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_internal(
+        local_x25519_private: &[u8],
+        local_peer_id_hex: &str,
+        remote_peer_id: &str,
+        role: Option<HandshakeRole>,
+        transport: &str,
+        now: f64,
+        allow_legacy_peer_id: bool,
+        expected_fingerprint: Option<String>,
+    ) -> Result<Self, CoreError> {
+        let local_pub = x25519_public_from_private_slice(local_x25519_private)?;
+        let mut priv_arr = [0u8; 32];
+        priv_arr.copy_from_slice(local_x25519_private);
+
+        let clean_local = local_peer_id_hex.trim().to_ascii_lowercase();
+        let clean_remote = remote_peer_id.trim().to_ascii_lowercase();
+
+        let resolved_role = match role {
+            Some(r) => r,
+            None => {
+                if clean_local.is_empty() || clean_remote.is_empty() {
+                    return Err(CoreError::value_err("Peer IDs must not be empty"));
+                }
+                if clean_local < clean_remote {
+                    HandshakeRole::Initiator
+                } else {
+                    HandshakeRole::Responder
+                }
+            }
+        };
+
+        let initial_mode = match Self::decode_hex_8_bytes(&clean_remote) {
+            Ok(id) if is_legacy_tui_peer_id_bytes(&id) => "legacy_tui",
+            _ => "modern",
+        };
+
+        Ok(Self {
+            local_x25519_private: priv_arr,
+            local_x25519_public: local_pub,
+            local_peer_id_hex: clean_local,
+            remote_peer_id: remote_peer_id.to_string(),
+            role: resolved_role,
+            state: "uninitialized".to_string(),
+            handshake_state: None,
+            send_cipher: None,
+            recv_cipher: None,
+            remote_static_public: None,
+            handshake_hash: None,
+            remote_fingerprint: None,
+            expected_fingerprint: expected_fingerprint.map(|s| s.trim().to_ascii_lowercase()),
+            identity_mode: initial_mode.to_string(),
+            trust_level: "observed".to_string(),
+            allow_legacy_peer_id,
+            handshake_started_at: None,
+            state_machine: NativeHandshakeStateMachine::new(remote_peer_id, transport, now, 3),
+        })
+    }
+
+    pub fn state_str(&self) -> &str {
+        &self.state
+    }
+
+    pub fn role_enum(&self) -> HandshakeRole {
+        self.role
+    }
+
+    pub fn is_established_internal(&self) -> bool {
+        self.state == "established"
+    }
+
+    pub fn handshake_started_at_internal(&self) -> Option<f64> {
+        self.handshake_started_at
+    }
+
+    pub fn remote_fingerprint_internal(&self) -> Option<&str> {
+        self.remote_fingerprint.as_deref()
+    }
+
+    pub fn identity_mode_internal(&self) -> &str {
+        &self.identity_mode
+    }
+
+    pub fn trust_level_internal(&self) -> &str {
+        &self.trust_level
+    }
+
+    pub fn record_phase_internal(&mut self, target_phase: &str, reason: &str, now: f64) {
+        let _ = self.state_machine.transition_to(target_phase, reason, now);
+    }
+
+    pub fn reset_for_rehandshake_internal(&mut self, new_role: Option<HandshakeRole>, now: f64) {
+        if let Some(r) = new_role {
+            self.role = r;
+        }
+        self.state = "uninitialized".to_string();
+        self.handshake_state = None;
+        self.send_cipher = None;
+        self.recv_cipher = None;
+        self.remote_static_public = None;
+        self.handshake_hash = None;
+        self.remote_fingerprint = None;
+        self.trust_level = "observed".to_string();
+        self.handshake_started_at = None;
+        self.record_phase_internal(
+            "HandshakeInitiated",
+            "Session reset for fresh handshake",
+            now,
+        );
+    }
+
+    pub fn start_handshake_internal(&mut self, now: f64) -> Result<Option<Vec<u8>>, CoreError> {
+        if self.state != "uninitialized" {
+            return Err(CoreError::noise_state(format!(
+                "start_handshake() called in invalid state: {}",
+                self.state
+            )));
+        }
+        let mut hs = NativeNoiseHandshakeState::new_internal(
+            self.role,
+            &self.local_x25519_private,
+            None,
+            None,
+        )?;
+        self.state = "handshaking".to_string();
+        self.handshake_started_at = Some(now);
+        self.record_phase_internal(
+            "HandshakeInitiated",
+            &format!("Handshake started as {}", self.role.as_str()),
+            now,
+        );
+        if self.role == HandshakeRole::Initiator {
+            let msg1 = hs.write_message_internal(b"")?;
+            self.handshake_state = Some(hs);
+            self.record_phase_internal("AwaitingMessage2", "Noise XX Message 1 [E] generated", now);
+            Ok(Some(msg1))
+        } else {
+            self.handshake_state = Some(hs);
+            Ok(None)
+        }
+    }
+
+    pub fn process_handshake_message_internal(
+        &mut self,
+        message: &[u8],
+        now: f64,
+    ) -> Result<Option<Vec<u8>>, CoreError> {
+        let result: Result<Option<Vec<u8>>, CoreError> = (|| {
+            if self.state == "uninitialized" && self.role == HandshakeRole::Responder {
+                let hs = NativeNoiseHandshakeState::new_internal(
+                    self.role,
+                    &self.local_x25519_private,
+                    None,
+                    None,
+                )?;
+                self.handshake_state = Some(hs);
+                self.state = "handshaking".to_string();
+                self.handshake_started_at = Some(now);
+                self.record_phase_internal(
+                    "HandshakeInitiated",
+                    "Responder auto-initialized on inbound Message 1",
+                    now,
+                );
+            }
+
+            if self.state != "handshaking" {
+                return Err(CoreError::noise_state(format!(
+                    "process_handshake_message() called in invalid state: {}",
+                    self.state
+                )));
+            }
+
+            let hs = self
+                .handshake_state
+                .as_mut()
+                .ok_or_else(|| CoreError::noise_state("Handshake state is not initialised"))?;
+
+            let _payload = hs.read_message_internal(message)?;
+
+            let response = if !hs.is_complete_internal() {
+                let out = hs.write_message_internal(b"")?;
+                if self.role == HandshakeRole::Responder {
+                    self.record_phase_internal(
+                        "AwaitingMessage3",
+                        "Noise XX Message 2 [E, EE, S, ES] generated",
+                        now,
+                    );
+                }
+                Some(out)
+            } else {
+                None
+            };
+
+            let is_done = self
+                .handshake_state
+                .as_ref()
+                .is_some_and(|h| h.is_complete_internal());
+            if is_done {
+                self.record_phase_internal(
+                    "AuthenticatingIdentity",
+                    "Verifying remote static key and peer-ID binding",
+                    now,
+                );
+                self.finalise_handshake(now)?;
+            }
+            Ok(response)
+        })();
+
+        match result {
+            Ok(resp) => Ok(resp),
+            Err(err) => {
+                self.handshake_state = None;
+                self.send_cipher = None;
+                self.recv_cipher = None;
+                self.state = "failed".to_string();
+                self.record_phase_internal(
+                    "Failed",
+                    &format!("Handshake failed: {}", err.kind.tag()),
+                    now,
+                );
+                Err(err)
+            }
+        }
+    }
+
+    fn finalise_handshake(&mut self, now: f64) -> Result<(), CoreError> {
         let hs = self
             .handshake_state
             .as_ref()
@@ -964,18 +1272,6 @@ impl NativeNoiseSession {
             }
         };
 
-        let digest = Sha256::digest(remote_static);
-        let mut authenticated_peer_id = [0u8; 8];
-        authenticated_peer_id.copy_from_slice(&digest[..8]);
-
-        if !constant_time_eq(&authenticated_peer_id, &claimed_peer_id) {
-            self.state = "failed".to_string();
-            self.handshake_state = None;
-            return Err(CoreError::authentication(
-                "Authenticated Noise static key does not match claimed peer ID",
-            ));
-        }
-
         if constant_time_eq(&remote_static, &self.local_x25519_public) {
             self.state = "failed".to_string();
             self.handshake_state = None;
@@ -984,58 +1280,155 @@ impl NativeNoiseSession {
             ));
         }
 
+        let digest = Sha256::digest(remote_static);
+        let mut authenticated_peer_id = [0u8; 8];
+        authenticated_peer_id.copy_from_slice(&digest[..8]);
+        let fp = sha256_hex(&remote_static);
+
+        let is_legacy = is_legacy_tui_peer_id_bytes(&claimed_peer_id);
+        let modern_matches = constant_time_eq(&authenticated_peer_id, &claimed_peer_id);
+
+        if modern_matches {
+            self.identity_mode = "modern".to_string();
+        } else if is_legacy && self.allow_legacy_peer_id {
+            // Controlled legacy bitchat-tui compatibility path:
+            // Noise static key is authenticated by XX; routing peer ID is bound only
+            // after authentication and checked against any pinned fingerprint.
+            self.identity_mode = "legacy_tui".to_string();
+        } else {
+            self.state = "failed".to_string();
+            self.handshake_state = None;
+            return Err(CoreError::authentication(
+                "Authenticated Noise static key does not match claimed peer ID",
+            ));
+        }
+
+        // Collision-safe identity check: reject silent reassignment if peer ID is
+        // already bound to a different static-key fingerprint.
+        if let Some(ref expected_fp) = self.expected_fingerprint {
+            if !constant_time_eq(expected_fp.as_bytes(), fp.as_bytes()) {
+                self.state = "failed".to_string();
+                self.handshake_state = None;
+                return Err(CoreError::authentication(
+                    "Conflicting identity mapping: authenticated Noise static key does not match pinned fingerprint",
+                ));
+            }
+        }
+
         let (send_c, recv_c) = hs.get_transport_ciphers_internal()?;
         let mut h_hash = [0u8; 32];
         h_hash.copy_from_slice(&hs.symmetric_state.hash);
-        let fp = sha256_hex(&remote_static);
 
         self.send_cipher = Some(send_c);
         self.recv_cipher = Some(recv_c);
         self.remote_static_public = Some(remote_static);
         self.handshake_hash = Some(h_hash);
         self.remote_fingerprint = Some(fp);
+        self.trust_level = "authenticated".to_string();
         self.handshake_state = None;
         self.state = "established".to_string();
+        let mode_note = if self.identity_mode == "legacy_tui" {
+            "Noise XX transport established (legacy TUI peer ID bound post-auth)"
+        } else {
+            "Noise XX transport established and peer identity verified"
+        };
+        self.record_phase_internal("Established", mode_note, now);
         Ok(())
+    }
+
+    pub fn encrypt_internal(&mut self, plaintext: &[u8]) -> Result<Vec<u8>, CoreError> {
+        if self.state != "established" {
+            return Err(CoreError::noise_state(format!(
+                "encrypt() requires ESTABLISHED state, got {}",
+                self.state
+            )));
+        }
+        let send = self
+            .send_cipher
+            .as_mut()
+            .ok_or_else(|| CoreError::noise_state("No send cipher available"))?;
+        match send.encrypt_internal(plaintext, b"") {
+            Ok(ct) => Ok(ct),
+            Err(err) => {
+                if err.kind == crate::errors::CoreErrorKind::InvalidNonce {
+                    // Fail closed on nonce exhaustion: invalidate transport ciphers so
+                    // caller must establish a fresh session.
+                    self.send_cipher = None;
+                    self.recv_cipher = None;
+                    self.state = "failed".to_string();
+                    self.record_phase_internal(
+                        "Failed",
+                        "Transport nonce exhausted; rekey required",
+                        0.0,
+                    );
+                }
+                Err(err)
+            }
+        }
+    }
+
+    pub fn decrypt_internal(&mut self, ciphertext: &[u8]) -> Result<Vec<u8>, CoreError> {
+        if self.state != "established" {
+            return Err(CoreError::noise_state(format!(
+                "decrypt() requires ESTABLISHED state, got {}",
+                self.state
+            )));
+        }
+        let recv = self
+            .recv_cipher
+            .as_mut()
+            .ok_or_else(|| CoreError::noise_state("No receive cipher available"))?;
+        recv.decrypt_internal(ciphertext, b"")
+    }
+
+    pub fn close_internal(&mut self, now: f64) {
+        self.record_phase_internal("Closing", "Session closing", now);
+        self.send_cipher = None;
+        self.recv_cipher = None;
+        self.handshake_state = None;
+        self.state = "closed".to_string();
+        self.record_phase_internal("Closed", "Session closed", now);
     }
 }
 
 #[pymethods]
 impl NativeNoiseSession {
     #[new]
-    #[pyo3(signature = (local_x25519_private, local_peer_id_hex, remote_peer_id, role=None))]
+    #[pyo3(signature = (
+        local_x25519_private,
+        local_peer_id_hex,
+        remote_peer_id,
+        role=None,
+        transport="lan",
+        now=0.0,
+        allow_legacy_peer_id=true,
+        expected_fingerprint=None
+    ))]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         local_x25519_private: &[u8],
         local_peer_id_hex: &str,
         remote_peer_id: &str,
         role: Option<&str>,
+        transport: &str,
+        now: f64,
+        allow_legacy_peer_id: bool,
+        expected_fingerprint: Option<String>,
     ) -> PyResult<Self> {
-        let local_pub = x25519_public_from_private_slice(local_x25519_private)?;
-        let mut priv_arr = [0u8; 32];
-        priv_arr.copy_from_slice(local_x25519_private);
-
-        let resolved_role = match role {
-            Some(r) => HandshakeRole::from_str_role(r)?,
-            None => {
-                let r_str = determine_handshake_role_raw(local_peer_id_hex, remote_peer_id)?;
-                HandshakeRole::from_str_role(r_str)?
-            }
+        let parsed_role = match role {
+            Some(r) => Some(HandshakeRole::from_str_role(r)?),
+            None => None,
         };
-
-        Ok(Self {
-            local_x25519_private: priv_arr,
-            local_x25519_public: local_pub,
-            local_peer_id_hex: local_peer_id_hex.to_string(),
-            remote_peer_id: remote_peer_id.to_string(),
-            role: resolved_role,
-            state: "uninitialized".to_string(),
-            handshake_state: None,
-            send_cipher: None,
-            recv_cipher: None,
-            remote_static_public: None,
-            handshake_hash: None,
-            remote_fingerprint: None,
-        })
+        Ok(Self::new_internal(
+            local_x25519_private,
+            local_peer_id_hex,
+            remote_peer_id,
+            parsed_role,
+            transport,
+            now,
+            allow_legacy_peer_id,
+            expected_fingerprint,
+        )?)
     }
 
     #[getter]
@@ -1080,6 +1473,51 @@ impl NativeNoiseSession {
     }
 
     #[getter]
+    pub fn expected_fingerprint(&self) -> Option<String> {
+        self.expected_fingerprint.clone()
+    }
+
+    #[setter]
+    pub fn set_expected_fingerprint(&mut self, fp: Option<String>) {
+        self.expected_fingerprint = fp.map(|s| s.trim().to_ascii_lowercase());
+    }
+
+    #[getter]
+    pub fn identity_mode(&self) -> &str {
+        &self.identity_mode
+    }
+
+    #[getter]
+    pub fn trust_level(&self) -> &str {
+        &self.trust_level
+    }
+
+    #[getter]
+    pub fn allow_legacy_peer_id(&self) -> bool {
+        self.allow_legacy_peer_id
+    }
+
+    #[getter]
+    pub fn handshake_started_at(&self) -> Option<f64> {
+        self.handshake_started_at
+    }
+
+    #[setter]
+    pub fn set_handshake_started_at(&mut self, ts: Option<f64>) {
+        self.handshake_started_at = ts;
+    }
+
+    #[getter]
+    pub fn observable_phase(&self) -> &str {
+        self.state_machine.phase()
+    }
+
+    #[getter]
+    pub fn diagnostic_reason(&self) -> &str {
+        self.state_machine.diagnostic_reason()
+    }
+
+    #[getter]
     pub fn remote_static_public(&self) -> Option<Vec<u8>> {
         self.remote_static_public.map(|k| k.to_vec())
     }
@@ -1094,115 +1532,79 @@ impl NativeNoiseSession {
         self.state == "established"
     }
 
-    pub fn start_handshake(&mut self) -> PyResult<Option<Vec<u8>>> {
-        if self.state != "uninitialized" {
-            return Err(CoreError::noise_state(format!(
-                "start_handshake() called in invalid state: {}",
-                self.state
-            ))
-            .into());
-        }
-        let mut hs = NativeNoiseHandshakeState::new_internal(
-            self.role,
-            &self.local_x25519_private,
-            None,
-            None,
-        )?;
-        self.state = "handshaking".to_string();
-        if self.role == HandshakeRole::Initiator {
-            let msg1 = hs.write_message_internal(b"")?;
-            self.handshake_state = Some(hs);
-            Ok(Some(msg1))
-        } else {
-            self.handshake_state = Some(hs);
-            Ok(None)
-        }
+    #[getter]
+    pub fn send_nonce(&self) -> u64 {
+        self.send_cipher.as_ref().map_or(0, |c| c.nonce)
     }
 
-    pub fn process_handshake_message(&mut self, message: &[u8]) -> PyResult<Option<Vec<u8>>> {
-        let result: Result<Option<Vec<u8>>, CoreError> = (|| {
-            if self.state == "uninitialized" && self.role == HandshakeRole::Responder {
-                let hs = NativeNoiseHandshakeState::new_internal(
-                    self.role,
-                    &self.local_x25519_private,
-                    None,
-                    None,
-                )?;
-                self.handshake_state = Some(hs);
-                self.state = "handshaking".to_string();
-            }
+    #[getter]
+    pub fn highest_received_nonce(&self) -> u64 {
+        self.recv_cipher
+            .as_ref()
+            .map_or(0, |c| c.highest_received_nonce)
+    }
 
-            if self.state != "handshaking" {
-                return Err(CoreError::noise_state(format!(
-                    "process_handshake_message() called in invalid state: {}",
-                    self.state
-                )));
-            }
+    pub fn needs_rekey(&self) -> bool {
+        self.send_cipher
+            .as_ref()
+            .is_some_and(|c| c.needs_rekey_internal())
+    }
 
-            let hs = self
-                .handshake_state
-                .as_mut()
-                .ok_or_else(|| CoreError::noise_state("Handshake state is not initialised"))?;
-
-            let _payload = hs.read_message_internal(message)?;
-
-            let response = if !hs.is_complete_internal() {
-                Some(hs.write_message_internal(b"")?)
-            } else {
-                None
-            };
-
-            let is_done = hs.is_complete_internal();
-            if is_done {
-                self.finalise_handshake()?;
-            }
-            Ok(response)
-        })();
-
-        match result {
-            Ok(resp) => Ok(resp),
-            Err(err) => {
-                self.state = "failed".to_string();
-                Err(err.into())
-            }
+    pub fn mark_user_verified(&mut self) -> PyResult<()> {
+        if self.remote_fingerprint.is_none() {
+            return Err(CoreError::noise_state(
+                "Cannot mark peer verified before authenticating a remote static key",
+            )
+            .into());
         }
+        self.trust_level = "verified".to_string();
+        Ok(())
+    }
+
+    #[pyo3(signature = (target_phase, reason="", now=0.0))]
+    pub fn record_phase(&mut self, target_phase: &str, reason: &str, now: f64) -> PyResult<String> {
+        self.state_machine.transition_to(target_phase, reason, now)
+    }
+
+    pub fn phase_history(&self) -> Vec<(String, f64, String)> {
+        self.state_machine.history()
+    }
+
+    #[pyo3(signature = (new_role=None, now=0.0))]
+    pub fn reset_for_rehandshake(&mut self, new_role: Option<&str>, now: f64) -> PyResult<()> {
+        let parsed_role = match new_role {
+            Some(r) => Some(HandshakeRole::from_str_role(r)?),
+            None => None,
+        };
+        self.reset_for_rehandshake_internal(parsed_role, now);
+        Ok(())
+    }
+
+    #[pyo3(signature = (now=0.0))]
+    pub fn start_handshake(&mut self, now: f64) -> PyResult<Option<Vec<u8>>> {
+        Ok(self.start_handshake_internal(now)?)
+    }
+
+    #[pyo3(signature = (message, now=0.0))]
+    pub fn process_handshake_message(
+        &mut self,
+        message: &[u8],
+        now: f64,
+    ) -> PyResult<Option<Vec<u8>>> {
+        Ok(self.process_handshake_message_internal(message, now)?)
     }
 
     pub fn encrypt(&mut self, plaintext: &[u8]) -> PyResult<Vec<u8>> {
-        if self.state != "established" {
-            return Err(CoreError::noise_state(format!(
-                "encrypt() requires ESTABLISHED state, got {}",
-                self.state
-            ))
-            .into());
-        }
-        let send = self
-            .send_cipher
-            .as_mut()
-            .ok_or_else(|| CoreError::noise_state("No send cipher available"))?;
-        Ok(send.encrypt_internal(plaintext, b"")?)
+        Ok(self.encrypt_internal(plaintext)?)
     }
 
     pub fn decrypt(&mut self, ciphertext: &[u8]) -> PyResult<Vec<u8>> {
-        if self.state != "established" {
-            return Err(CoreError::noise_state(format!(
-                "decrypt() requires ESTABLISHED state, got {}",
-                self.state
-            ))
-            .into());
-        }
-        let recv = self
-            .recv_cipher
-            .as_mut()
-            .ok_or_else(|| CoreError::noise_state("No receive cipher available"))?;
-        Ok(recv.decrypt_internal(ciphertext, b"")?)
+        Ok(self.decrypt_internal(ciphertext)?)
     }
 
-    pub fn close(&mut self) {
-        self.send_cipher = None;
-        self.recv_cipher = None;
-        self.handshake_state = None;
-        self.state = "closed".to_string();
+    #[pyo3(signature = (now=0.0))]
+    pub fn close(&mut self, now: f64) {
+        self.close_internal(now);
     }
 }
 
@@ -1600,5 +2002,160 @@ mod tests {
         let ct2 = r_send.encrypt_internal(b"reply from bob", b"").unwrap();
         let pt2 = i_recv.decrypt_internal(&ct2, b"").unwrap();
         assert_eq!(pt2, b"reply from bob");
+    }
+
+    #[test]
+    fn test_nonce_exhaustion_fails_closed_and_failed_aead_does_not_mark_replay() {
+        let key = [0x55u8; 32];
+        let mut sender = NativeNoiseCipherState::new_internal(Some(key), true);
+        let mut receiver = NativeNoiseCipherState::new_internal(Some(key), true);
+
+        let ct0 = sender.encrypt_internal(b"valid nonce 0", b"").unwrap();
+        // Tamper tag: decryption must fail AND must NOT record nonce 0 in replay window!
+        let mut bad_ct0 = ct0.clone();
+        *bad_ct0.last_mut().unwrap() ^= 0xFF;
+        assert!(receiver.decrypt_internal(&bad_ct0, b"").is_err());
+        assert!(!receiver.replay_window.contains(&0));
+
+        // Legitimate nonce 0 still decrypts once, then replay is rejected
+        assert_eq!(
+            receiver.decrypt_internal(&ct0, b"").unwrap(),
+            b"valid nonce 0"
+        );
+        assert!(receiver.decrypt_internal(&ct0, b"").is_err());
+
+        // Nonce exhaustion at u32::MAX must fail closed without wrapping
+        sender.nonce = NOISE_MAX_TRANSPORT_NONCE;
+        assert!(sender.is_nonce_exhausted_internal());
+        assert!(sender.needs_rekey_internal());
+        let err = sender.encrypt_internal(b"must fail", b"").unwrap_err();
+        assert_eq!(err.kind, crate::errors::CoreErrorKind::InvalidNonce);
+        assert_eq!(sender.nonce, NOISE_MAX_TRANSPORT_NONCE);
+    }
+
+    #[test]
+    fn test_native_session_legacy_tui_compat_and_collision_rejection() {
+        let rustpy_priv = [0x12u8; 32];
+        let rustpy_pub = x25519_public_from_private_slice(&rustpy_priv).unwrap();
+        let rustpy_pid = crate::protocol::hex_encode_lower(&Sha256::digest(rustpy_pub)[..8]);
+
+        let tui_priv = [0x34u8; 32];
+        let tui_pub = x25519_public_from_private_slice(&tui_priv).unwrap();
+        let tui_fp = sha256_hex(&tui_pub);
+        // Legacy bitchat-tui peer ID: 4 random non-zero bytes zero-extended to 8 bytes
+        let tui_legacy_pid = "deadbeef00000000";
+
+        let mut rustpy_sess = NativeNoiseSession::new_internal(
+            &rustpy_priv,
+            &rustpy_pid,
+            tui_legacy_pid,
+            Some(HandshakeRole::Responder),
+            "lan",
+            1.0,
+            true,
+            None,
+        )
+        .unwrap();
+        let mut tui_sess = NativeNoiseSession::new_internal(
+            &tui_priv,
+            tui_legacy_pid,
+            &rustpy_pid,
+            Some(HandshakeRole::Initiator),
+            "lan",
+            1.0,
+            true,
+            None,
+        )
+        .unwrap();
+
+        let m1 = tui_sess.start_handshake_internal(1.0).unwrap().unwrap();
+        let m2 = rustpy_sess
+            .process_handshake_message_internal(&m1, 1.1)
+            .unwrap()
+            .unwrap();
+        let m3 = tui_sess
+            .process_handshake_message_internal(&m2, 1.2)
+            .unwrap()
+            .unwrap();
+        assert!(rustpy_sess
+            .process_handshake_message_internal(&m3, 1.3)
+            .unwrap()
+            .is_none());
+
+        assert!(rustpy_sess.is_established_internal());
+        assert_eq!(rustpy_sess.identity_mode_internal(), "legacy_tui");
+        assert_eq!(rustpy_sess.trust_level_internal(), "authenticated");
+        assert_eq!(
+            rustpy_sess.remote_fingerprint_internal(),
+            Some(tui_fp.as_str())
+        );
+
+        // Bidirectional transport
+        let ct = tui_sess.encrypt_internal(b"hi from legacy tui").unwrap();
+        assert_eq!(
+            rustpy_sess.decrypt_internal(&ct).unwrap(),
+            b"hi from legacy tui"
+        );
+
+        // Impostor with different static key reusing the same pinned legacy peer ID MUST be rejected!
+        let impostor_priv = [0x78u8; 32];
+        let mut pinned_rustpy = NativeNoiseSession::new_internal(
+            &rustpy_priv,
+            &rustpy_pid,
+            tui_legacy_pid,
+            Some(HandshakeRole::Responder),
+            "lan",
+            2.0,
+            true,
+            Some(tui_fp),
+        )
+        .unwrap();
+        let mut impostor = NativeNoiseSession::new_internal(
+            &impostor_priv,
+            tui_legacy_pid,
+            &rustpy_pid,
+            Some(HandshakeRole::Initiator),
+            "lan",
+            2.0,
+            true,
+            None,
+        )
+        .unwrap();
+        let im1 = impostor.start_handshake_internal(2.0).unwrap().unwrap();
+        let im2 = pinned_rustpy
+            .process_handshake_message_internal(&im1, 2.1)
+            .unwrap()
+            .unwrap();
+        let im3 = impostor
+            .process_handshake_message_internal(&im2, 2.2)
+            .unwrap()
+            .unwrap();
+        let err = pinned_rustpy
+            .process_handshake_message_internal(&im3, 2.3)
+            .unwrap_err();
+        assert_eq!(err.kind, crate::errors::CoreErrorKind::Authentication);
+        assert_eq!(pinned_rustpy.state_str(), "failed");
+    }
+
+    #[test]
+    fn test_parse_noise_identity_announce() {
+        let priv_key = [0x99u8; 32];
+        let pub_key = x25519_public_from_private_slice(&priv_key).unwrap();
+        let digest = Sha256::digest(pub_key);
+        let mut payload64 = Vec::with_capacity(64);
+        payload64.extend_from_slice(&pub_key);
+        payload64.extend_from_slice(&digest);
+
+        let (pk32, fp32) = parse_noise_identity_announce_bytes(&pub_key).unwrap();
+        let (pk64, fp64) = parse_noise_identity_announce_bytes(&payload64).unwrap();
+        assert_eq!(pk32, pub_key);
+        assert_eq!(pk64, pub_key);
+        assert_eq!(fp32, fp64);
+
+        // Tampered hash suffix rejected
+        payload64[63] ^= 0x01;
+        assert!(parse_noise_identity_announce_bytes(&payload64).is_err());
+        // Invalid length rejected
+        assert!(parse_noise_identity_announce_bytes(&[0u8; 16]).is_err());
     }
 }

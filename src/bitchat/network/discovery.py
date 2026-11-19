@@ -10,6 +10,7 @@ import time
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
+from bitchat._native import HAS_NATIVE_CORE, _core
 from bitchat.crypto.identity import generate_instance_id
 from bitchat.network.adapter import get_broadcast_targets, get_local_ip, is_local_ip
 from bitchat.network.models import DiscoveryPacket, LANDiscoveredPeer
@@ -22,6 +23,37 @@ logger = logging.getLogger(__name__)
 DEFAULT_DISCOVERY_PORT: int = 41234
 DEFAULT_BROADCAST_INTERVAL: float = 3.0
 MAX_DISCOVERY_RATE_PER_IP: int = 10  # Packets per second per sender IP
+
+
+class _NativeIpRateLimiterView:
+    """Dict-like view backed directly by Rust ``NativeIpRateLimiter``."""
+
+    def __init__(self, native_limiter: Any) -> None:
+        self._native = native_limiter
+
+    def __len__(self) -> int:
+        return int(self._native.tracked_ip_count())
+
+    def __contains__(self, ip: object) -> bool:
+        if not isinstance(ip, str):
+            return False
+        return bool(self._native.contains_ip(ip))
+
+    def __getitem__(self, ip: str) -> list[float]:
+        val = self._native.get_ip_timestamps(ip)
+        if val is None:
+            raise KeyError(ip)
+        return list(val)
+
+    def __setitem__(self, ip: str, timestamps: list[float]) -> None:
+        self._native.set_ip_timestamps(ip, [float(t) for t in timestamps])
+
+    def __delitem__(self, ip: str) -> None:
+        if not self._native.remove_ip(ip):
+            raise KeyError(ip)
+
+    def clear(self) -> None:
+        self._native.clear()
 
 
 class LANDiscovery:
@@ -50,7 +82,16 @@ class LANDiscovery:
         self._is_running: bool = False
         self._discovered_peers: dict[str, LANDiscoveredPeer] = {}
         self._previous_peer_ids: set[str] = set()
-        self._rate_limiter: dict[str, list[float]] = defaultdict(list)
+        self._native_rate_limiter: Any | None = (
+            _core.NativeIpRateLimiter(MAX_DISCOVERY_RATE_PER_IP, 1.0, 4096)
+            if HAS_NATIVE_CORE and hasattr(_core, "NativeIpRateLimiter")
+            else None
+        )
+        self._rate_limiter: Any = (
+            _NativeIpRateLimiterView(self._native_rate_limiter)
+            if self._native_rate_limiter is not None
+            else defaultdict(list)
+        )
         self._broadcast_task: asyncio.Task[Any] | None = None
         self._listen_task: asyncio.Task[Any] | None = None
         self._listen_sock: socket.socket | None = None
@@ -358,8 +399,10 @@ class LANDiscovery:
         return peer
 
     def prune_rate_limiter(self, max_age: float = 1.0, now: float | None = None) -> int:
-        """Prune empty or expired IP entries from rate limiter dict."""
+        """Prune empty or expired IP entries from rate limiter."""
         current_time = time.time() if now is None else now
+        if self._native_rate_limiter is not None:
+            return int(self._native_rate_limiter.prune(max_age, current_time))
         to_delete = [
             ip
             for ip, timestamps in self._rate_limiter.items()
@@ -371,6 +414,8 @@ class LANDiscovery:
 
     def _is_rate_limited(self, ip: str, now: float | None = None) -> bool:
         current_time = time.time() if now is None else now
+        if self._native_rate_limiter is not None:
+            return bool(self._native_rate_limiter.is_rate_limited(ip, current_time))
         if len(self._rate_limiter) > 256:
             self.prune_rate_limiter(now=current_time)
 

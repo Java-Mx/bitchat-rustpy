@@ -197,17 +197,47 @@ class BLETransport:
             )
 
         encoded = encode_packet(packet, add_padding=add_padding)
+        negotiated_mtu = getattr(self.connection, "negotiated_mtu", None)
+        max_write = getattr(self.connection, "max_write_chunk_size", 512)
+        if not isinstance(max_write, int) or max_write < 20:
+            max_write = 512
 
-        if not should_fragment(encoded):
+        # Fragment when wire size exceeds protocol threshold (500B) OR when the
+        # BLE controller explicitly negotiated a smaller ATT MTU write limit.
+        needs_mtu_frag = (
+            isinstance(negotiated_mtu, int)
+            and negotiated_mtu >= 23
+            and len(encoded) > max_write
+        )
+        if not should_fragment(encoded) and not needs_mtu_frag:
             await self.connection.write(encoded, response=False)
             return
 
-        # Large packet: slice and send with 20ms pacing
-        fragments = fragment_encoded_packet(
-            encoded,
-            sender_id=self.sender_id,
-            original_message_type=packet.message_type,
+        # Large packet (or constrained controller MTU): slice and send with 20ms pacing
+        from bitchat.protocol.constants import (
+            FIXED_HEADER_SIZE,
+            FRAGMENT_CHUNK_SIZE,
+            FRAGMENT_HEADER_SIZE,
+            SENDER_ID_SIZE,
         )
+
+        # Reserve outer header (14B) + sender_id (8B) + fragment header (13B) = 35B
+        if needs_mtu_frag:
+            overhead = FIXED_HEADER_SIZE + SENDER_ID_SIZE + FRAGMENT_HEADER_SIZE
+            chunk_size = max(1, min(FRAGMENT_CHUNK_SIZE, max_write - overhead))
+            fragments = fragment_encoded_packet(
+                encoded,
+                sender_id=self.sender_id,
+                original_message_type=packet.message_type,
+                chunk_size=chunk_size,
+                force=True,
+            )
+        else:
+            fragments = fragment_encoded_packet(
+                encoded,
+                sender_id=self.sender_id,
+                original_message_type=packet.message_type,
+            )
 
         logger.debug(
             "Transmitting %d fragments for packet size %d bytes to %s",

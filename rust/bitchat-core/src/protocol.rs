@@ -358,23 +358,21 @@ pub fn peer_id_to_hex(peer_id: &[u8]) -> PyResult<String> {
     Ok(hex_encode_lower(peer_id))
 }
 
-#[pyfunction]
-pub fn peer_id_from_hex<'py>(py: Python<'py>, hex_str: &str) -> PyResult<Bound<'py, PyBytes>> {
+pub fn parse_peer_id_hex_bytes(hex_str: &str) -> Result<[u8; SENDER_ID_SIZE], CoreError> {
     let clean = hex_str.trim().to_ascii_lowercase();
     let bytes = clean.as_bytes();
     if !bytes.len().is_multiple_of(2)
         || !bytes.iter().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
     {
-        return Err(
-            CoreError::invalid_packet(format!("Invalid hexadecimal peer ID '{hex_str}'")).into(),
-        );
+        return Err(CoreError::invalid_packet(format!(
+            "Invalid hexadecimal peer ID '{hex_str}'"
+        )));
     }
     if bytes.len() != SENDER_ID_SIZE * 2 {
         return Err(CoreError::invalid_packet(format!(
             "Hexadecimal peer ID must represent {SENDER_ID_SIZE} bytes (16 hex chars), got {}",
             bytes.len() / 2
-        ))
-        .into());
+        )));
     }
     let mut out = [0u8; SENDER_ID_SIZE];
     for i in 0..SENDER_ID_SIZE {
@@ -390,6 +388,49 @@ pub fn peer_id_from_hex<'py>(py: Python<'py>, hex_str: &str) -> PyResult<Bound<'
         };
         out[i] = (hi << 4) | lo;
     }
+    Ok(out)
+}
+
+/// Returns `true` iff `peer_id` matches the legacy `bitchat-tui` 4-byte random ID
+/// zero-extended to the 8-byte packet field (`[b0, b1, b2, b3, 0, 0, 0, 0]` with
+/// non-zero upper 4 bytes).
+#[inline]
+pub fn is_legacy_tui_peer_id_bytes(peer_id: &[u8; SENDER_ID_SIZE]) -> bool {
+    peer_id[4..8] == [0u8; 4] && peer_id[0..4] != [0u8; 4]
+}
+
+/// Strictly validate and classify a 16-hex-character peer ID as `"legacy_tui"`
+/// or `"modern"`. Rejects non-hex strings, wrong lengths, all-zeros, and
+/// broadcast (`ffffffffffffffff`).
+#[pyfunction]
+pub fn classify_peer_id_raw(hex_str: &str) -> PyResult<&'static str> {
+    let id = parse_peer_id_hex_bytes(hex_str)?;
+    if id == [0u8; SENDER_ID_SIZE] {
+        return Err(CoreError::invalid_packet("Peer ID must not be all zeros").into());
+    }
+    if id == [0xFFu8; SENDER_ID_SIZE] {
+        return Err(
+            CoreError::invalid_packet("Broadcast ID is not a valid unicast peer ID").into(),
+        );
+    }
+    if is_legacy_tui_peer_id_bytes(&id) {
+        Ok("legacy_tui")
+    } else {
+        Ok("modern")
+    }
+}
+
+/// Strictly validate and normalize a 16-hex-character peer ID to lowercase hex.
+/// Never silently truncates or treats invalid hex as ASCII.
+#[pyfunction]
+pub fn normalize_peer_id_raw(hex_str: &str) -> PyResult<String> {
+    let id = parse_peer_id_hex_bytes(hex_str)?;
+    Ok(hex_encode_lower(&id))
+}
+
+#[pyfunction]
+pub fn peer_id_from_hex<'py>(py: Python<'py>, hex_str: &str) -> PyResult<Bound<'py, PyBytes>> {
+    let out = parse_peer_id_hex_bytes(hex_str)?;
     Ok(PyBytes::new(py, &out))
 }
 

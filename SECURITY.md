@@ -10,8 +10,8 @@ Security fixes are applied to the latest release on the `main` branch. Earlier p
 
 | Version | Supported | Status |
 | :--- | :--- | :--- |
-| **`0.3.2` (`main`)** | ✅ Yes | Current release (Hybrid Python + Rust `bitchat._bitchat_core`) |
-| `< 0.3.2` | ❌ No | Upgrade to `0.3.2` |
+| **`0.3.3` (`main`)** | ✅ Yes | Current release (Hybrid Python + Rust `bitchat._bitchat_core` — Authoritative Rust Noise XX & Protocol Engine) |
+| `< 0.3.3` | ❌ No | Upgrade to `0.3.3` |
 
 ---
 
@@ -47,7 +47,7 @@ We ask researchers to act in good faith, avoid disrupting other users' devices o
 
 ## 3. Audit Status
 
-> **Important Notice:** BitChat `v0.3.2` has **not** undergone an independent third-party cryptographic or security audit. While the codebase uses standard cryptographic primitives and automated test suites, it should not be relied upon for life-safety, critical infrastructure, or high-threat adversarial operations.
+> **Important Notice:** BitChat `v0.3.3` has **not** undergone an independent third-party cryptographic or security audit. While the codebase uses standard cryptographic primitives and automated test suites, it should not be relied upon for life-safety, critical infrastructure, or high-threat adversarial operations.
 
 ---
 
@@ -76,11 +76,11 @@ We ask researchers to act in good faith, avoid disrupting other users' devices o
 
 To help users and auditors evaluate BitChat accurately, the table below distinguishes what is implemented and tested today from known limitations, unverified assumptions, and planned future work:
 
-### 5.1 Implemented Protections (`v0.3.2`)
+### 5.1 Implemented Protections (`v0.3.3`)
 
-- **Mutual Authenticated Key Agreement:** Direct peer sessions use the `Noise_XX_25519_ChaChaPoly_SHA256` handshake pattern (`src/bitchat/crypto/noise.py`), providing mutual static key authentication and forward secrecy via ephemeral X25519 keys.
-- **Authenticated Encryption & Replay Window:** Established Noise sessions encrypt payloads with `ChaCha20-Poly1305` using 4-byte little-endian counter prefixes and enforce a 1,024-entry sliding replay window. Channel/legacy symmetric encryption uses `AES-256-GCM` with 96-bit OS CSPRNG nonces.
-- **Strict Post-Handshake Peer ID Binding:** After the Noise handshake completes, BitChat verifies that the remote peer's advertised 8-byte `peer_id` matches `SHA-256(remote_x25519_public)[:8]`, rejecting peers whose static key does not match their routing ID.
+- **Authoritative Native Rust Noise XX & Cryptographic Engine:** Direct peer sessions execute `Noise_XX_25519_ChaChaPoly_SHA256` inside `rust/bitchat-core` (`NativeNoiseSession`, `NativeHandshakeStateMachine`, `NativeNoiseCipherState`) with `zeroize::ZeroizeOnDrop` on private keys, chaining keys, and session cipher states, and no raw session key copy held eagerly in Python.
+- **Authenticated Encryption, Strict Replay Protection & Nonce Exhaustion Guard:** Established Noise sessions encrypt payloads with `ChaCha20-Poly1305` using 4-byte little-endian counter prefixes, enforce a 1,024-entry sliding replay window (including nonce `0` with no replay exception), never advance the replay window on failed AEAD decryption, and fail closed before `u32::MAX` nonce overflow. Channel/legacy symmetric encryption uses `AES-256-GCM` with 96-bit OS CSPRNG nonces.
+- **Post-Handshake Peer ID Binding & Controlled Legacy `bitchat-tui` Interoperability:** For modern peers, BitChat strictly verifies `peer_id == SHA-256(remote_x25519_public)[:8]`. For legacy 4-byte zero-extended `bitchat-tui` peer IDs (`XXXXXXXX00000000`), identity binding is pinned to the authenticated static key fingerprint post-handshake inside `NativePeerStateEngine` with collision rejection against impostor keys, and `authenticated` (handshake-proven) trust is kept strictly distinct from `verified` (out-of-band user-confirmed) trust.
 - **Trust-On-First-Use (TOFU) & Maximum Security Mode:** In `normal` mode, peer fingerprints are pinned on first contact in `~/.bitchat/config.json` (`contacts`) and subsequent mismatches are rejected. In `maximum` security mode (`security_mode = "maximum"`), unverified peers are blocked until explicitly trusted (`/trust` / `/verify`).
 - **Bounded Buffers & Resource Caps:**
   - Maximum wire payload: `65,535` bytes; maximum application chat message size: `32,768` bytes (`MAX_MESSAGE_SIZE`).
@@ -116,7 +116,8 @@ To help users and auditors evaluate BitChat accurately, the table below distingu
 
 As part of the multi-stage Rust migration roadmap (see [`docs/ROADMAP.md`](docs/ROADMAP.md)):
 
-- **Stage 2 (Planned):** Migrate `X25519`, `Ed25519`, `AES-256-GCM`, `HKDF-SHA256`, and the `Noise_XX` state machine into Rust (`rust/bitchat-core`) with explicit `zeroize::ZeroizeOnDrop` for private keys and session cipher states.
+- **Stage 2 & Phase 2.2 (Completed in `v0.3.2`–`v0.3.3`):** `X25519`, `Ed25519`, `ChaCha20-Poly1305`, `AES-256-GCM`, `HKDF-SHA256`, `PBKDF2-HMAC-SHA256`, `Noise_XX` sessions (`NativeNoiseSession`), and single-FFI `NativeProtocolEngine` / `NativePeerStateEngine` run natively in Rust (`rust/bitchat-core`) with `zeroize::ZeroizeOnDrop`.
+- **Stage 3–6 (In Progress / Planned):** Complete native Rust async transport I/O (LAN/BLE) and native session coordinator / local storage so private keys never cross the Python boundary.
 - **Future Hardening (Planned):** Optional passphrase-derived encryption at rest (`Argon2id` / `PBKDF2`) or OS keychain integration for `identity.json`.
 
 ---

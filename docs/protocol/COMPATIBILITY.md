@@ -1,12 +1,22 @@
-# BitChat Protocol Interoperability & Compatibility (`v0.3.2`)
+# BitChat Protocol Interoperability & Compatibility (`v0.3.3`)
 
-This document specifies the wire-level compatibility between BitChat (`bitchat-rustpy` `v0.3.2`, including its embedded `rust/bitchat-core` native extension) and external BitChat v1 reference implementations, including intentional security hardening differences.
+This document specifies the wire-level compatibility between BitChat (`bitchat-rustpy` `v0.3.3`, including its authoritative `rust/bitchat-core` native protocol engine) and external BitChat v1 reference implementations (including `bitchat-tui`), along with intentional security hardening differences.
 
 ---
 
-## 1. Internal Python ↔ Rust Core Differential Parity (`v0.3.2`)
+## 1. Internal Python ↔ Rust Core Differential Parity (`v0.3.3`)
 
-Within this repository, `rust/bitchat-core` (`bitchat._bitchat_core`) and the pure-Python reference modules (`src/bitchat/protocol/`, `src/bitchat/crypto/`, `src/bitchat/network/`, `src/bitchat/mesh/`, `src/bitchat/ble/`) are 100% byte-for-byte compatible across packet serialization, fragmentation/reassembly, TCP stream framing, X25519, Ed25519, AES-256-GCM, Noise/legacy HKDF-SHA256, PBKDF2-HMAC-SHA256, all three `Noise_XX_25519_ChaChaPoly_SHA256` handshake messages, transport cipher states, mesh routing decisions, and store-and-forward queuing, continuously verified by `tests/unit/test_native_core.py`.
+Within this repository, `rust/bitchat-core` (`bitchat._bitchat_core`) is the authoritative production protocol engine while pure-Python reference modules (`PyNoiseSession`, `PyMeshRouter`, `PyStoreAndForwardQueue`, `py_encode_packet`, `py_decode_packet`, etc.) remain 100% byte-for-byte compatible and continuously verified by `tests/unit/test_native_core.py` and `tests/interoperability/test_tui_interop.py`.
+
+### Controlled Legacy `bitchat-tui` Peer-ID Interoperability (`v0.3.3`)
+- **Modern RustPy Peers:** Strictly enforce `peer_id == SHA-256(remote_x25519_public)[:8]` after Noise XX authentication. Any mismatch fails closed (`AuthenticationError`).
+- **Legacy `bitchat-tui` Peers:** Recognized exclusively when the 8-byte wire identifier matches the exact 4-byte random zero-extended layout (`[b0, b1, b2, b3, 0, 0, 0, 0]` where `b0..b4 != [0, 0, 0, 0]`).
+  1. The Noise XX static public key is authenticated first.
+  2. Self-connections are unconditionally rejected.
+  3. The routing peer ID is bound to the 64-character SHA-256 static-key fingerprint ONLY after Noise XX completion in `NativePeerStateEngine` and persisted via TOFU (`config.contacts`).
+  4. Any conflicting fingerprint claiming an already-bound routing ID (or duplicate fingerprint claiming a different routing ID) is rejected (`AuthenticationError`).
+  5. Trust level `authenticated` (Noise possession) is explicitly distinguished from `verified` (out-of-band user confirmation).
+  6. **Security Limitation:** Legacy 4-byte routing IDs carry only 32 bits of entropy and are not cryptographically derived from the static key; users communicating with legacy TUI peers should verify full 64-character fingerprints out-of-band (`/fingerprint`, `/verify`).
 
 ### TCP Stream Framing Integrity & Wire Invariants
 - **Stream Framing Magic:** `FRAME_MAGIC = b"BC\x01\x00"` (4 bytes).

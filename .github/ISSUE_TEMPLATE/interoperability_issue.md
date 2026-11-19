@@ -9,7 +9,7 @@ assignees: []
 > **Security Notice:** Do **NOT** report exploitable protocol or cryptographic vulnerabilities in public issues. Report security vulnerabilities privately via [GitHub Security Advisories](https://github.com/Java-Mx/bitchat-rustpy/security/advisories/new) (`SECURITY.md`).
 
 ## Environment & Versions
-- **BitChat version**: <!-- e.g., 0.3.1 (run `bitchat --version`) -->
+- **BitChat version**: <!-- e.g., 0.3.3 (run `bitchat --version`) -->
 - **Python version**: <!-- e.g., 3.12.3 -->
 - **External / Reference client version**: <!-- e.g., bitchat-tui, bitchat iOS/Android commit SHA -->
 - **Operating systems**:

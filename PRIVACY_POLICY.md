@@ -1,9 +1,9 @@
 # BitChat Privacy Policy
 
-> **DRAFT — LEGAL REVIEW REQUIRED:** This document is a technical privacy disclosure draft prepared for the open-source BitChat project (`v0.3.2`). It describes the actual data-handling behavior of the software as implemented in the repository and must be reviewed by the project publisher or qualified legal counsel before any commercial, enterprise, or regulated deployment.
+> **DRAFT — LEGAL REVIEW REQUIRED:** This document is a technical privacy disclosure draft prepared for the open-source BitChat project (`v0.3.3`). It describes the actual data-handling behavior of the software as implemented in the repository and must be reviewed by the project publisher or qualified legal counsel before any commercial, enterprise, or regulated deployment.
 
 **Effective Date:** November 19, 2026  
-**Applicable Release:** BitChat `v0.3.2`  
+**Applicable Release:** BitChat `v0.3.3`  
 **Repository:** [https://github.com/Java-Mx/bitchat-rustpy](https://github.com/Java-Mx/bitchat-rustpy)
 
 ---
@@ -52,7 +52,7 @@ By default, BitChat stores local state inside the `.bitchat` directory in your u
 
 The following runtime structures exist **only in volatile memory (RAM)** while BitChat is running and are discarded when you exit the application:
 
-- **Chat Message History:** Sent and received chat messages displayed in the terminal UI are held in memory only and are **not** saved to disk in `v0.3.2`.
+- **Chat Message History:** Sent and received chat messages displayed in the terminal UI are held in memory only and are **not** saved to disk in `v0.3.3`.
 - **Noise XX Session State:** Ephemeral X25519 handshake keys, HMAC-SHA256 chaining keys, and ChaCha20-Poly1305 / AES-256-GCM symmetric cipher states (`NoiseSession`).
 - **Mesh & Reassembly Buffers:** The `PacketDeduplicator` (`NativePacketDeduplicator`) cache, `FragmentReassembler` (`NativeFragmentReassembler`) state for multi-part packets, and the `StoreAndForwardQueue` (bounded to at most 100 packets / 256 KB total, 20 packets per peer, with a 300-second time-to-live).
 

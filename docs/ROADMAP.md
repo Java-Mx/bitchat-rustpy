@@ -1,8 +1,8 @@
 # BitChat Architecture & Rust Migration Roadmap
 
-This document defines the multi-stage engineering roadmap for **BitChat**, tracking its progression from a pure-Python application (`v0.1.0`–`v0.2.1`) through the current hybrid Python + Rust architecture (`v0.3.2`) toward a fully native Rust application.
+This document defines the multi-stage engineering roadmap for **BitChat**, tracking its progression from a pure-Python application (`v0.1.0`–`v0.2.1`) through the current hybrid Python + Rust architecture (`v0.3.3`) toward a fully native Rust application.
 
-> **Engineering Policy:** This roadmap describes architectural stages and technical milestones without promising calendar release dates. Stages 1 and 2 (including Rust Cryptography, Noise XX, and the deterministic 12-phase Handshake State Machine) along with native foundations for Stages 3–5 (Mesh Router, LAN Discovery/Framing, BLE Connection Engine) are implemented in `rust/bitchat-core` (`bitchat._bitchat_core`) for `v0.3.2`. The next upcoming milestone is **Phase 2.2 (`v0.3.3`)**, focusing on cross-implementation interoperability and legacy identity compatibility. Stages 6 and 7 remain planned future engineering phases.
+> **Engineering Policy:** This roadmap describes architectural stages and technical milestones without promising calendar release dates. Stage 1 (Protocol Codec & Framing), Stage 2 (Authoritative Rust Cryptography & Noise XX Session Engine), and Stage 3 (Authoritative Single-Pass Rust Mesh Router, Peer State Engine, Store-and-Forward, ACK Tracker, and Cohesive `NativeProtocolEngine`) are implemented and production-authoritative in `rust/bitchat-core` (`bitchat._bitchat_core`) for `v0.3.3` (**Phase 2.2**). Stages 4 and 5 have native Rust protocol/state engines (`lan.rs`, `ble.rs`) integrated with Python asyncio/Bleak/WinRT/BlueZ transport orchestration. Stages 6 and 7 remain planned future engineering phases.
 
 ---
 
@@ -12,9 +12,9 @@ This document defines the multi-stage engineering roadmap for **BitChat**, track
 | :--- | :--- | :--- | :--- |
 | **Legacy Baseline (`v0.1.0`–`v0.2.1`)** | 100% Python (`asyncio` + `Textual` + pure-Python protocol/mesh) | Superseded | `v0.1.0`–`v0.2.1` |
 | **Stage 1 Baseline (`v0.3.1`)** | **Hybrid Python Application + Rust Native Core (`bitchat._bitchat_core`, ~25% Rust hot-path ownership)** | ✅ **Completed** | `v0.3.1` |
-| **Phase 2 Milestone (`v0.3.2`)** | **Native Rust Cryptography, Noise XX Engine & Transport Foundations (~50% Rust ownership)** (X25519, Ed25519, AEAD, HKDF, PBKDF2, Zeroize, 12-phase FSM, LAN scoring, BLE buffering) | ✅ **Completed** | `v0.3.2` |
-| **Phase 2.2 Milestone (`v0.3.3`)** | **Cross-Implementation Interoperability & Security Hardening** (Reference TUI interoperability, legacy peer-ID compatibility, controller buffer limits, deep network diagnostics) | 📋 **Next Milestone** | `v0.3.3` |
-| **Stages 3–5 Full Migration** | **~60% Rust Architectural Ownership** (Full native Tokio LAN transport, native BlueZ/WinRT BLE drivers, native mesh routing) | 📋 Planned | `v0.4.0` |
+| **Phase 2 Milestone (`v0.3.2`)** | **Native Rust Cryptography, Noise XX Foundation & Transport Foundations** (X25519, Ed25519, AEAD, HKDF, PBKDF2, Zeroize, 12-phase FSM, LAN scoring, BLE buffering) | ✅ **Completed** | `v0.3.2` |
+| **Phase 2.2 Milestone (`v0.3.3`)** | **Authoritative Rust Protocol Integration, Noise XX Interop & Stage 3 Mesh/Peer State Engine (~55% Rust ownership)** (Authoritative `NativeNoiseSession`, `NativeProtocolEngine`, `NativePeerStateEngine`, legacy `bitchat-tui` peer-ID compatibility with collision protection, nonce exhaustion fail-closed, single-pass `MeshRouter`/`StoreAndForwardQueue`, `NativeIpRateLimiter`, MTU-aware BLE chunking) | ✅ **Completed** | `v0.3.3` |
+| **Stages 4–5 Full Native Transports** | **~65% Rust Architectural Ownership** (Full native Tokio LAN server/client loops, native BlueZ/WinRT BLE drivers) | 🔄 **Foundations Integrated; Full Driver Migration Planned** | `v0.4.0` |
 | **Final Objective (Stages 6–7)** | **100% Native Rust Application** (Rust TUI, CLI, Transports, Storage, Crypto, and Protocol; Python, PyO3, and Maturin removed) | 📋 Planned | `v1.0.0` |
 
 ---
@@ -31,9 +31,9 @@ The legacy `nim/` directory is retained strictly as an archived historical refer
 
 ```mermaid
 flowchart LR
-    S1["Stage 1 (v0.3.1 ✅)\nRust Protocol & Mesh Core\n(PyO3 + Maturin)"] --> S2["Stage 2 (Planned)\nRust Crypto & Noise XX\n(Zeroize + AEAD)"]
-    S2 --> S3["Stage 3 (Planned)\nRust Mesh Router &\nPeer State Engine"]
-    S3 --> S4["Stage 4 (Planned)\nRust LAN Transport\n(Tokio UDP + TCP)"]
+    S1["Stage 1 (v0.3.1 ✅)\nRust Protocol & Mesh Core\n(PyO3 + Maturin)"] --> S2["Phase 2 (v0.3.2 ✅)\nRust Crypto & Noise XX\n(Zeroize + AEAD)"]
+    S2 --> S22["Phase 2.2 (v0.3.3 ✅)\nAuthoritative Rust Protocol\n& Stage 3 Peer State Engine"]
+    S22 --> S4["Stage 4 (Planned)\nRust LAN Transport\n(Tokio UDP + TCP)"]
     S4 --> S5["Stage 5 (Planned ~60% Rust)\nRust BLE Transport\n(WinRT + BlueZ GATT)"]
     S5 --> S6["Stage 6 (Planned)\nRust Session Coordinator\n& Local Storage"]
     S6 --> S7["Stage 7 (Final 100% Rust)\nNative Rust TUI & CLI\n(Remove Python/PyO3)"]

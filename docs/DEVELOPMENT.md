@@ -1,4 +1,4 @@
-# BitChat Development Guide (`v0.3.1`)
+# BitChat Development Guide (`v0.3.3`)
 
 ## 1. Prerequisites & Environment Setup
 

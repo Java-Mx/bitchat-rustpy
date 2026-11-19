@@ -1,6 +1,6 @@
 # BitChat Support & Troubleshooting Guide
 
-Welcome to the official support guide for **BitChat** (`v0.3.2`). This document explains how to run built-in diagnostics, troubleshoot common Bluetooth Low Energy (BLE) and Local Area Network (LAN) issues, locate diagnostic logs, uninstall or reset the application, and report bugs effectively.
+Welcome to the official support guide for **BitChat** (`v0.3.3`). This document explains how to run built-in diagnostics, troubleshoot common Bluetooth Low Energy (BLE) and Local Area Network (LAN) issues, locate diagnostic logs, uninstall or reset the application, and report bugs effectively.
 
 ---
 

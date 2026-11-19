@@ -5,13 +5,16 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import time
 from time import perf_counter
 from typing import TYPE_CHECKING, Any
 
+from bitchat._native import HAS_NATIVE_CORE, _core
 from bitchat.crypto.noise import (
     NoiseRole,
     NoiseSessionState,
     ObservableSessionPhase,
+    parse_noise_identity_announce,
 )
 from bitchat.crypto.sessions import NoiseSession
 from bitchat.exceptions import (
@@ -54,6 +57,8 @@ TRANSPORT_RETRY_TIMEOUT_SECONDS: float = 30.0
 MAX_TTL: int = 7
 MAX_MESSAGE_SIZE: int = 32_768
 MAX_PENDING_HANDSHAKES: int = 64
+MAX_PENDING_MESSAGES_PER_PEER: int = 32
+MAX_TOTAL_PENDING_MESSAGES: int = 512
 PERIODIC_PRUNE_INTERVAL_SECONDS: float = 30.0
 
 
@@ -121,6 +126,7 @@ class SessionCoordinator:
 
         self._sessions: dict[str, NoiseSession] = {}
         self._pending_messages: dict[str, list[str]] = {}
+        self._session_established_events: dict[str, asyncio.Event] = {}
         self.peer_addresses: dict[str, str] = {}
         self.address_to_peer_id: dict[str, str] = {}
         self.peer_nicknames: dict[str, str] = {}
@@ -130,6 +136,26 @@ class SessionCoordinator:
         self._retry_lock = asyncio.Lock()
         self.last_transport_switch_metrics: dict[str, Any] = {}
         self._transport_state_committed_at: float | None = None
+
+        # Native Rust Stage 3 Peer State & Delivery ACK engines
+        self.peer_state_engine: Any | None = (
+            _core.NativePeerStateEngine(
+                self.local_identity.peer_id_hex,
+                self.nickname,
+                512,
+                MAX_PENDING_MESSAGES_PER_PEER,
+                MAX_TOTAL_PENDING_MESSAGES,
+            )
+            if HAS_NATIVE_CORE and hasattr(_core, "NativePeerStateEngine")
+            else None
+        )
+        self.ack_tracker: Any | None = (
+            _core.NativeAckTracker(512)
+            if HAS_NATIVE_CORE and hasattr(_core, "NativeAckTracker")
+            else None
+        )
+        self.on_delivery_ack: Callable[[str, str], None] | None = None
+        self._seed_peer_state_from_storage()
 
         self.server_reassembler = FragmentReassembler()
         self.fragment_reassembler = self.server_reassembler
@@ -331,6 +357,16 @@ class SessionCoordinator:
             self.mesh_router.prune_rate_limiter()
         except Exception as e:
             logger.warning("Error pruning mesh router: %s", e)
+        if self.peer_state_engine is not None:
+            try:
+                self.peer_state_engine.prune_expired_peers(300.0, time.time())
+            except Exception as e:
+                logger.warning("Error pruning peer state engine: %s", e)
+        if self.ack_tracker is not None:
+            try:
+                self.ack_tracker.collect_expired(time.time())
+            except Exception as e:
+                logger.warning("Error pruning ACK tracker: %s", e)
 
     def _start_prune_task(self) -> None:
         """Start the periodic background prune task if not already running."""
@@ -402,6 +438,9 @@ class SessionCoordinator:
         if self._sessions.get(peer_id) is session:
             self._sessions.pop(peer_id, None)
         self._pending_messages.pop(peer_id, None)
+        ev = self._session_established_events.pop(peer_id, None)
+        if ev is not None:
+            ev.set()
 
     MAX_PENDING_HANDSHAKES: int = MAX_PENDING_HANDSHAKES
 
@@ -486,6 +525,58 @@ class SessionCoordinator:
             return "offline"
         return self.active_transport_name
 
+    def _seed_peer_state_from_storage(self) -> None:
+        """Seed collision-safe identity bindings from persisted trusted contacts."""
+        if self.peer_state_engine is None or self.storage is None:
+            return
+        try:
+            config = self.storage.load_config()
+            for pid, fp in config.contacts.items():
+                self.peer_state_engine.seed_trusted_contact(pid, fp, False)
+        except Exception as e:
+            logger.debug("Could not seed peer state from storage: %s", e)
+
+    def _get_pinned_fingerprint(self, peer_id_hex: str) -> str | None:
+        """Return pinned fingerprint from Rust peer state engine or storage."""
+        clean = peer_id_hex.strip().lower()
+        if self.peer_state_engine is not None:
+            bound = self.peer_state_engine.get_bound_fingerprint(clean)
+            if bound is not None:
+                return str(bound)
+        if self.storage is not None:
+            with contextlib.suppress(Exception):
+                return self.storage.load_config().get_contact_fingerprint(clean)
+        return None
+
+    def verify_peer_identity(self, peer_id_hex: str) -> bool:
+        """Mark an authenticated peer as user-verified (distinct from Noise auth)."""
+        clean = peer_id_hex.strip().lower()
+        session = self._sessions.get(clean)
+        if session is not None and session.remote_fingerprint:
+            with contextlib.suppress(Exception):
+                session.mark_user_verified()
+        if self.peer_state_engine is not None:
+            try:
+                self.peer_state_engine.mark_verified(clean)
+                return True
+            except Exception:
+                return False
+        return session is not None and session.trust_level == "verified"
+
+    def untrust_peer_identity(self, peer_id_hex: str) -> bool:
+        """Clear a pinned peer identity binding to permit controlled key migration."""
+        clean = peer_id_hex.strip().lower()
+        removed = False
+        if self.peer_state_engine is not None:
+            removed = bool(self.peer_state_engine.untrust_peer(clean)) or removed
+        if self.storage is not None:
+            with contextlib.suppress(Exception):
+                cfg = self.storage.load_config()
+                if cfg.remove_contact(clean):
+                    self.storage.save_config(cfg)
+                    removed = True
+        return removed
+
     def get_or_create_session(self, remote_peer_id_hex: str) -> NoiseSession:
         """Get existing NoiseSession or initialize a new one for remote peer."""
         clean_remote = remote_peer_id_hex.strip().lower()
@@ -497,7 +588,16 @@ class SessionCoordinator:
             raise ValueError(err_msg)
         session = self._sessions.get(remote_peer_id_hex)
         if session is None:
-            session = NoiseSession(self.local_identity, remote_peer_id_hex)
+            pinned_fp = self._get_pinned_fingerprint(clean_remote)
+            transport_label = (
+                "ble" if self.active_transport_name == "bluetooth" else "lan"
+            )
+            session = NoiseSession(
+                self.local_identity,
+                remote_peer_id_hex,
+                transport=transport_label,
+                expected_fingerprint=pinned_fp,
+            )
             self._sessions[remote_peer_id_hex] = session
         return session
 
@@ -1607,6 +1707,8 @@ class SessionCoordinator:
     def set_nickname(self, nickname: str) -> None:
         """Update local nickname across active transports."""
         self.nickname = nickname
+        if self.peer_state_engine is not None:
+            self.peer_state_engine.set_local_nickname(nickname)
         for transport in self._transports.values():
             transport.update_identity(self.local_identity.peer_id_hex, self.nickname)
 
@@ -1648,11 +1750,22 @@ class SessionCoordinator:
         session = self.get_or_create_session(target_peer_id_hex)
 
         if not session.is_established:
-            self._pending_messages.setdefault(target_peer_id_hex, []).append(text)
+            pending_queue = self._pending_messages.setdefault(target_peer_id_hex, [])
+            total_pending = sum(len(q) for q in self._pending_messages.values())
+            if (
+                len(pending_queue) >= MAX_PENDING_MESSAGES_PER_PEER
+                or total_pending >= MAX_TOTAL_PENDING_MESSAGES
+            ):
+                logger.warning(
+                    "Pending message queue limit reached for %s; dropping message",
+                    target_peer_id_hex[:8],
+                )
+            else:
+                pending_queue.append(text)
             is_stale_handshaking = (
                 session.state == NoiseSessionState.HANDSHAKING
                 and session._handshake_started_at is not None
-                and (perf_counter() - session._handshake_started_at) >= 2.0
+                and (time.monotonic() - session._handshake_started_at) >= 2.0
             )
             if (
                 session.state
@@ -1968,7 +2081,7 @@ class SessionCoordinator:
                 is_stale_handshaking = (
                     session.state == NoiseSessionState.HANDSHAKING
                     and session._handshake_started_at is not None
-                    and (perf_counter() - session._handshake_started_at) >= 2.0
+                    and (time.monotonic() - session._handshake_started_at) >= 2.0
                 )
                 if session.role == NoiseRole.INITIATOR and (
                     session.state
@@ -2011,15 +2124,22 @@ class SessionCoordinator:
                 is_stale_handshaking = (
                     session.state == NoiseSessionState.HANDSHAKING
                     and session._handshake_started_at is not None
-                    and (perf_counter() - session._handshake_started_at) >= 2.0
+                    and (time.monotonic() - session._handshake_started_at) >= 2.0
                 )
                 local_is_canonical_initiator = (
                     self.local_identity.peer_id_hex < sender_hex
                 )
 
-                if session.state == NoiseSessionState.FAILED:
-                    # Clean reset after prior handshake failure so remote init succeeds
+                if session.state in (
+                    NoiseSessionState.FAILED,
+                    NoiseSessionState.ESTABLISHED,
+                    NoiseSessionState.CLOSED,
+                ):
+                    # Reset after prior failure or reconnect for fresh ephemeral state
                     self._cancel_handshake_timeout(sender_hex)
+                    ev = self._session_established_events.get(sender_hex)
+                    if ev is not None:
+                        ev.clear()
                     session.reset_for_rehandshake(NoiseRole.RESPONDER)
                 elif session.state == NoiseSessionState.UNINITIALIZED:
                     if session.role == NoiseRole.INITIATOR:
@@ -2100,13 +2220,53 @@ class SessionCoordinator:
                 if session.is_established:
                     self._on_handshake_established(sender_hex, session)
 
+            case MessageType.NoiseIdentityAnnounce:
+                try:
+                    _static_pk, announced_fp = parse_noise_identity_announce(
+                        packet.payload
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Rejected invalid NoiseIdentityAnnounce from %s: %s",
+                        sender_hex,
+                        e,
+                    )
+                    return
+                if self.peer_state_engine is not None:
+                    try:
+                        self.peer_state_engine.record_observed_identity_announce(
+                            sender_hex, announced_fp, time.time()
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            "Rejected conflicting NoiseIdentityAnnounce from %s: %s",
+                            sender_hex,
+                            e,
+                        )
+                        return
+
+            case MessageType.DeliveryAck:
+                msg_id = packet.payload.decode("utf-8", errors="replace").strip()
+                if msg_id and self.ack_tracker is not None:
+                    acked_peer = self.ack_tracker.acknowledge(msg_id)
+                    if acked_peer is not None and self.on_delivery_ack is not None:
+                        self.on_delivery_ack(msg_id, str(acked_peer))
+
             case MessageType.NoiseEncrypted:
                 session = self._sessions.get(sender_hex)
-                if session is not None and not session.is_established:
-                    for _ in range(25):
-                        await asyncio.sleep(0.04)
-                        if session.is_established:
-                            break
+                if (
+                    session is not None
+                    and session.state == NoiseSessionState.HANDSHAKING
+                ):
+                    est_event = self._session_established_events.setdefault(
+                        sender_hex, asyncio.Event()
+                    )
+                    if session.is_established:
+                        est_event.set()
+                    else:
+                        with contextlib.suppress(TimeoutError):
+                            await asyncio.wait_for(est_event.wait(), timeout=1.0)
+                    session = self._sessions.get(sender_hex)
 
                 if session is None or not session.is_established:
                     logger.warning(
@@ -2131,11 +2291,30 @@ class SessionCoordinator:
     def _on_handshake_established(
         self, remote_peer_id_hex: str, session: NoiseSession
     ) -> None:
-        """Trigger completion callback and flush queued messages."""
+        """Trigger completion callback, collision-safe binding, and flush pending."""
         self._cancel_handshake_timeout(remote_peer_id_hex)
         fingerprint = session.remote_fingerprint or ""
 
-        # Peer authentication & TOFU verification
+        # 1. Native Rust collision-safe identity binding check (modern + legacy TUI)
+        if self.peer_state_engine is not None and fingerprint:
+            try:
+                self.peer_state_engine.bind_authenticated_identity(
+                    remote_peer_id_hex,
+                    fingerprint,
+                    session.identity_mode,
+                    time.time(),
+                )
+            except Exception as e:
+                logger.error(
+                    "Native identity binding collision rejected for peer %s: %s",
+                    remote_peer_id_hex,
+                    e,
+                )
+                session._state = NoiseSessionState.FAILED
+                self._discard_failed_session(remote_peer_id_hex, session)
+                return
+
+        # 2. Persistent TOFU contact verification (reuses trusted-contact store)
         if self.storage is not None and fingerprint:
             try:
                 config = self.storage.load_config()
@@ -2153,6 +2332,11 @@ class SessionCoordinator:
                 self.storage.save_config(config)
             except Exception as e:
                 logger.warning("Error during TOFU contact verification: %s", e)
+
+        est_event = self._session_established_events.setdefault(
+            remote_peer_id_hex, asyncio.Event()
+        )
+        est_event.set()
 
         if self.on_handshake_completed:
             self.on_handshake_completed(remote_peer_id_hex, fingerprint)
@@ -2268,6 +2452,9 @@ class SessionCoordinator:
                 if session is not None:
                     session.close()
                 self._pending_messages.pop(peer_id, None)
+                ev = self._session_established_events.pop(peer_id, None)
+                if ev is not None:
+                    ev.set()
         if self.on_peer_status_changed:
             self.on_peer_status_changed(peer_address, "Disconnected")
 

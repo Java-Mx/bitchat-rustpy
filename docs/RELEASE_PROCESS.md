@@ -1,4 +1,4 @@
-# BitChat Release Engineering Process (`v0.3.2`)
+# BitChat Release Engineering Process (`v0.3.3`)
 
 This document describes the official release process for BitChat (`https://github.com/Java-Mx/bitchat-rustpy`), reflecting the actual build scripts (`packaging/windows/build.py`, `packaging/linux/build.py`) and GitHub Actions workflows (`.github/workflows/ci.yml`, `.github/workflows/build.yml`, `.github/workflows/security.yml`, and `.github/workflows/release.yml`).
 
@@ -6,22 +6,22 @@ This document describes the official release process for BitChat (`https://githu
 
 ## 1. Version Synchronization Locations
 
-BitChat uses Semantic Versioning (`MAJOR.MINOR.PATCH`, currently `0.3.2`). Every release must update the version consistently across the following files:
+BitChat uses Semantic Versioning (`MAJOR.MINOR.PATCH`, currently `0.3.3`). Every release must update the version consistently across the following files:
 
 | File | Field / Location |
 | :--- | :--- |
-| `pyproject.toml` | `[project] version = "0.3.2"` |
-| `src/bitchat/__init__.py` | `__version__ = "0.3.2"` |
-| `Cargo.toml` | `[workspace.package] version = "0.3.2"` (inherited by `rust/bitchat-core/Cargo.toml`) |
+| `pyproject.toml` | `[project] version = "0.3.3"` |
+| `src/bitchat/__init__.py` | `__version__ = "0.3.3"` |
+| `Cargo.toml` | `[workspace.package] version = "0.3.3"` (inherited by `rust/bitchat-core/Cargo.toml`) |
 | `Cargo.lock` & `uv.lock` | Workspace package versions synchronized via `cargo check` and `uv lock` |
-| `packaging/windows/bitchat.iss` | `#define MyAppVersion "0.3.2"` |
-| `packaging/windows/version_info.txt` | `filevers=(0, 3, 2, 0)`, `prodvers=(0, 3, 2, 0)`, `FileVersion`, `ProductVersion` |
-| `packaging/windows/winget/Java-Mx.BitChat.yaml` | `PackageVersion: 0.3.2` and `InstallerUrl` / `InstallerSha256` |
-| `packaging/linux/flatpak/io.github.java_mx.bitchat.metainfo.xml` | `<release version="0.3.2" date="YYYY-MM-DD">` |
+| `packaging/windows/bitchat.iss` | `#define MyAppVersion "0.3.3"` |
+| `packaging/windows/version_info.txt` | `filevers=(0, 3, 3, 0)`, `prodvers=(0, 3, 3, 0)`, `FileVersion`, `ProductVersion` |
+| `packaging/windows/winget/Java-Mx.BitChat.yaml` | `PackageVersion: 0.3.3` and `InstallerUrl` / `InstallerSha256` |
+| `packaging/linux/flatpak/io.github.java_mx.bitchat.metainfo.xml` | `<release version="0.3.3" date="YYYY-MM-DD">` |
 | `packaging/linux/flatpak/io.github.java_mx.bitchat.yaml` | Flatpak manifest metadata |
-| `packaging/linux/arch/PKGBUILD` | `pkgver=0.3.2` |
-| `packaging/linux/snap/snapcraft.yaml` | `version: '0.3.2'` |
-| `CHANGELOG.md` | Release section header `## [0.3.2] - YYYY-MM-DD` |
+| `packaging/linux/arch/PKGBUILD` | `pkgver=0.3.3` |
+| `packaging/linux/snap/snapcraft.yaml` | `version: '0.3.3'` |
+| `CHANGELOG.md` | Release section header `## [0.3.3] - YYYY-MM-DD` |
 | `README.md`, `docs/DOWNLOAD.md`, `docs/download/index.html` | Direct download links, asset filenames, and SHA-256 checksums |
 
 Automated tests in `tests/unit/test_package.py`, `tests/unit/test_packaging_windows.py`, `tests/unit/test_packaging_linux.py`, and `tests/unit/test_documentation.py` verify that these version strings remain synchronized.
@@ -85,39 +85,40 @@ Running `uv run python packaging/linux/build.py --build-flatpak` on Linux x86_64
 
 ## 4. Automated GitHub Actions Release Workflow (`.github/workflows/release.yml`)
 
-Pushing a version tag matching `v*` (e.g., `git tag -a v0.3.2 -m "Release v0.3.2" && git push origin v0.3.2`) or triggering `workflow_dispatch` on `.github/workflows/release.yml` runs three coordinated jobs:
+Pushing a version tag matching `v*` (e.g., `git tag -a v0.3.3 -m "Release v0.3.3" && git push origin v0.3.3`) or triggering `workflow_dispatch` on `.github/workflows/release.yml` runs four coordinated jobs:
 
-1. **`build-linux` (`ubuntu-latest`):**
+1. **`build-linux` (`ubuntu-latest`, `x86_64`):**
    - Sets up Python 3.12 (`uv`), stable Rust toolchain (`dtolnay/rust-toolchain@stable`), and system packages (`libdbus-1-dev`, `dpkg-dev`, `flatpak-builder`).
    - Runs `ruff`, `pyright`, and `pytest`.
-   - Builds the Linux wheel (`bitchat_python-<version>-cp312-cp312-linux_x86_64.whl`) and source distribution (`bitchat_python-<version>.tar.gz`) via `uv build`.
+   - Builds the Linux ABI3 wheel (`bitchat-<version>-cp312-abi3-linux_x86_64.whl`) and source distribution (`bitchat-<version>.tar.gz`) via `uv build`.
    - Builds `.deb`, `.AppImage`, and `.flatpak` artifacts along with `.sha256` checksum files.
-2. **`build-windows` (`windows-latest`):**
+2. **`build-windows` (`windows-latest`, `x64`):**
    - Sets up Python 3.12 (`uv`), stable Rust toolchain, and Inno Setup 6.
-   - Builds the Windows wheel (`bitchat_python-<version>-cp312-cp312-win_amd64.whl`).
+   - Builds the Windows ABI3 wheel (`bitchat-<version>-cp312-abi3-win_amd64.whl`).
    - Runs Windows packaging and uninstaller unit tests.
    - Runs `packaging/windows/build.py` to produce `BitChat-<version>-windows-x64.exe` and `.sha256`.
    - Performs an end-to-end silent install smoke test (`--version`, `--help`, `--startup status`, `--uninstall --dry-run`, and `unins000.exe`).
-3. **`publish` (`ubuntu-latest`):**
-   - Collects all Linux and Windows artifacts, generates `.sha256` files for wheels and sdist archives, verifies that all mandatory artifacts exist, and publishes the GitHub Release via `softprops/action-gh-release@v3`.
+3. **`build-macos` (`macos-latest`, Apple Silicon `arm64`):**
+   - Sets up Python 3.12 (`uv`) and stable Rust toolchain.
+   - Runs native core, interoperability, and package verification tests.
+   - Builds the macOS ABI3 wheel (`bitchat-<version>-cp312-abi3-macosx_*_arm64.whl`) and verifies `bitchat --version`.
+   - *(Note: macOS `.dmg`/`.pkg` installers and macOS BLE Peripheral GATT hosting are not yet implemented; Intel macOS is supported via source builds.)*
+4. **`publish` (`ubuntu-latest`):**
+   - Collects all Linux, Windows, and macOS artifacts, generates `.sha256` files for wheels and sdist archives, verifies that all mandatory artifacts exist, and publishes the GitHub Release via `softprops/action-gh-release@v3`.
 
-### Official Release Asset Inventory (13 Assets for `v0.3.2`)
+### Official Release Asset Inventory (`v0.3.3`)
 
-Every official release publishes the following 13 assets:
+Every official `v0.3.3` release publishes the following verified artifacts and checksums:
 
-1. `BitChat-<version>-windows-x64.exe`
-2. `BitChat-<version>-windows-x64.exe.sha256`
-3. `bitchat_<version>_amd64.deb`
-4. `bitchat_<version>_amd64.deb.sha256`
-5. `BitChat-<version>-x86_64.AppImage`
-6. `BitChat-<version>-x86_64.AppImage.sha256`
-7. `BitChat-<version>-x86_64.flatpak`
-8. `BitChat-<version>-x86_64.flatpak.sha256`
-9. `bitchat_python-<version>-cp312-cp312-win_amd64.whl`
-10. `bitchat_python-<version>-cp312-cp312-win_amd64.whl.sha256`
-11. `bitchat_python-<version>-cp312-cp312-linux_x86_64.whl`
-12. `bitchat_python-<version>-cp312-cp312-linux_x86_64.whl.sha256`
-13. `bitchat_python-<version>.tar.gz` (plus `bitchat_python-<version>.tar.gz.sha256` and `Java-Mx.BitChat.yaml`)
+1. `BitChat-<version>-windows-x64.exe` + `.sha256`
+2. `bitchat_<version>_amd64.deb` + `.sha256`
+3. `BitChat-<version>-x86_64.AppImage` + `.sha256`
+4. `BitChat-<version>-x86_64.flatpak` + `.sha256` (when Flatpak runtime is available)
+5. `bitchat-<version>-cp312-abi3-win_amd64.whl` + `.sha256`
+6. `bitchat-<version>-cp312-abi3-linux_x86_64.whl` + `.sha256`
+7. `bitchat-<version>-cp312-abi3-macosx_*_arm64.whl` + `.sha256`
+8. `bitchat-<version>.tar.gz` + `.sha256`
+9. `Java-Mx.BitChat.yaml` (WinGet manifest)
 
 ---
 

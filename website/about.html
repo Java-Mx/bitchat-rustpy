@@ -28,7 +28,7 @@
       <a href="index.html" class="brand-link" aria-label="BitChat RustPy Home">
         <img src="assets/img/brand/bitchat-icon-32.svg" alt="" class="brand-icon" />
         <span class="brand-title">BitChat RustPy</span>
-        <span class="brand-badge">v0.3.2</span>
+        <span class="brand-badge">v0.3.3</span>
       </a>
 
       <nav aria-label="Main Navigation">
@@ -84,7 +84,7 @@
         <h1 class="article-title">About BitChat RustPy</h1>
         <div class="article-meta">
           <span>Author: <strong>Java-Mx &amp; Contributors</strong></span>
-          <span>Version: <strong>0.3.2</strong></span>
+          <span>Version: <strong>0.3.3</strong></span>
           <span>License: <strong>MIT</strong></span>
         </div>
       </div>
@@ -106,21 +106,21 @@
         <div class="how-it-works-grid" style="margin: 2rem 0;">
           <div class="step-card">
             <div class="step-header">
-              <span class="step-index">CURRENT: v0.3.2</span>
-              <span class="step-title">Phase 2 Native Cryptography &amp; Core</span>
+              <span class="step-index">CURRENT: PHASE 2.2 (v0.3.3)</span>
+              <span class="step-title">Authoritative Rust Protocol Engine &amp; Stage 3 Initiation</span>
             </div>
             <p class="step-body">
-              Python coordinates high-level application orchestration, Textual TUI widgets, and async event loops. A native Rust crate (<code>_bitchat_core</code>) compiled via PyO3 and Maturin accelerates wire-speed packet framing, Noise XX handshakes, ChaCha20-Poly1305 AEAD, Ed25519 signing/verification, zeroizing memory buffers, and packet deduplication.
+              The native Rust crate (<code>_bitchat_core</code>) compiled via PyO3 and Maturin is now the authoritative owner of Noise XX sessions (<code>NativeNoiseSession</code>), single-FFI inbound packet processing (<code>NativeProtocolEngine</code>), Stage 3 peer identity/trust state (<code>NativePeerStateEngine</code>), mesh routing, store-and-forward queuing, deduplication, and zeroizing cryptographic buffers — interoperable with <code>bitchat-tui</code>.
             </p>
           </div>
 
           <div class="step-card">
             <div class="step-header">
-              <span class="step-index">NEXT: PHASE 2.2 (v0.3.3)</span>
-              <span class="step-title">Rust Network Transport Engines</span>
+              <span class="step-index">NEXT: PHASE 3 (STAGES 4–6)</span>
+              <span class="step-title">Native Rust Transports &amp; Session Coordinator</span>
             </div>
             <p class="step-body">
-              Transitioning physical transport state machines (Tokio async networking), BLE Central/Peripheral adapters, and peer state engine natively into Rust, leaving Python solely responsible for the terminal user interface layer.
+              Transitioning physical transport I/O loops (Tokio async LAN networking and native BLE Central/Peripheral backends), local storage, and session coordination natively into Rust, leaving Python solely responsible for the terminal user interface layer.
             </p>
           </div>
         </div>

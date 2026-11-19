@@ -313,6 +313,53 @@ impl NativeFragmentReassembler {
         }
     }
 
+    pub fn add_fragment_internal(
+        &mut self,
+        message_type: u8,
+        sender_id: &[u8],
+        payload: &[u8],
+    ) -> Result<Option<Vec<u8>>, CoreError> {
+        if !matches!(
+            message_type,
+            MSG_FRAGMENT_START | MSG_FRAGMENT_CONTINUE | MSG_FRAGMENT_END
+        ) {
+            return Err(CoreError::invalid_fragment(format!(
+                "Packet message type {message_type:#04x} is not a fragment type"
+            )));
+        }
+        let (frag_id, index, total, orig_type, chunk_data) = unpack_fragment_payload(payload)?;
+        if (total as usize) > self.max_fragments_per_assembly {
+            return Err(CoreError::fragment_limit(format!(
+                "Fragment total {total} exceeds limit of {}",
+                self.max_fragments_per_assembly
+            )));
+        }
+        if index == 0 && message_type != MSG_FRAGMENT_START {
+            return Err(CoreError::invalid_fragment(format!(
+                "Fragment index 0 must use FragmentStart, got {message_type:#04x}"
+            )));
+        }
+        if index > 0 && index == total - 1 && message_type != MSG_FRAGMENT_END {
+            return Err(CoreError::invalid_fragment(format!(
+                "Final fragment index {index} must use FragmentEnd, got {message_type:#04x}"
+            )));
+        }
+        if index > 0 && index < total - 1 && message_type != MSG_FRAGMENT_CONTINUE {
+            return Err(CoreError::invalid_fragment(format!(
+                "Middle fragment index {index} must use FragmentContinue, got {message_type:#04x}"
+            )));
+        }
+
+        self.insert_chunk_internal(
+            sender_id,
+            frag_id,
+            index as i64,
+            total as i64,
+            orig_type,
+            chunk_data,
+        )
+    }
+
     fn insert_chunk_internal(
         &mut self,
         sender_id: &[u8],

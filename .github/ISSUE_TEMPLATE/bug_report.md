@@ -27,7 +27,7 @@ assignees: []
 ## Environment Information
 - **OS**: <!-- e.g., Windows 11, Ubuntu 24.04, macOS 14.5 Sonoma -->
 - **Python version**: <!-- e.g., 3.12.3, 3.14.0 (run `python --version`) -->
-- **BitChat version**: <!-- e.g., 0.3.1 (run `bitchat --version`), or git commit SHA -->
+- **BitChat version**: <!-- e.g., 0.3.3 (run `bitchat --version`), or git commit SHA -->
 - **Installation method**: <!-- e.g., Windows .exe installer, WinGet, .deb, AppImage, Flatpak, pip/uv, source -->
 - **Active transport**: <!-- e.g., Bluetooth LE, Local Network (LAN), Offline Mode -->
 - **`bitchat --configure` output**: <!-- Paste output of `bitchat --configure` if relevant -->

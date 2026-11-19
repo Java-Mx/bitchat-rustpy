@@ -72,7 +72,7 @@ flowchart TD
 ## 5. Duplicate Detection and Loop Prevention
 
 To prevent infinite routing loops and broadcast storms:
-- **Deterministic SHA-256 `[:16]` Cache (`v0.3.1` Implementation):** While the early external `bitchat-tui` prototype used a probabilistic Bloom filter, `bitchat-rustpy` `v0.3.1` implements a deterministic bounded LRU + TTL deduplication cache (`NativePacketDeduplicator` in `rust/bitchat-core/src/mesh.rs` and `PacketDeduplicator` in `src/bitchat/mesh/dedup.py`). It computes a TTL-invariant 16-byte SHA-256 digest over `(sender_id, timestamp, message_type, recipient_id, payload)` bounded to `1,000` entries and a `300.0`-second TTL.
+- **Deterministic SHA-256 `[:16]` Cache (`v0.3.3` Authoritative Native Rust):** While the early external `bitchat-tui` prototype used a probabilistic Bloom filter, `bitchat-rustpy` implements a deterministic bounded LRU + TTL deduplication cache (`NativePacketDeduplicator` in `rust/bitchat-core/src/mesh.rs` with reference fallback `PacketDeduplicator` in `src/bitchat/mesh/dedup.py`). It computes a TTL-invariant 16-byte SHA-256 digest over `(sender_id, timestamp, message_type, recipient_id, payload)` bounded to `1,000` entries and a `300.0`-second TTL.
 - **Per-Peer Rate Limiting:** `NativePeerRateLimiter` enforces a sliding-window cap of `50` packets/second per peer to prevent flood amplification.
 - **Drop Action:** If a packet digest is already present in the deduplicator or exceeds the peer rate limit, the packet is silently dropped without retransmission.
 - **Reassembly Check:** Deduplication is applied both at the wire packet level and after fragmented messages are reassembled.
@@ -138,9 +138,9 @@ When an incoming message is received, the node decides whether to generate a `De
 
 ---
 
-## 11. Store-and-Forward & Routing Scope (`v0.3.1`)
+## 11. Store-and-Forward & Routing Scope (`v0.3.3`)
 
-- **Bounded Store-and-Forward Queue (`Implemented in v0.3.1`):** `StoreAndForwardQueue` (`src/bitchat/mesh/store_forward.py`) buffers outbound packets for temporarily disconnected peers in memory (bounded to `100` total packets, `20` packets per peer, `256 KB` total bytes, and `300.0` seconds TTL) and automatically flushes them when the peer reconnects or announces presence.
+- **Bounded Store-and-Forward Queue (Authoritative Native Rust `NativeStoreAndForwardQueue`):** `StoreAndForwardQueue` (`src/bitchat/mesh/store_forward.py`, delegating directly to `NativeStoreAndForwardQueue` in `rust/bitchat-core/src/mesh.rs`) buffers outbound packets for temporarily disconnected peers in memory (bounded to `100` total packets, `20` packets per peer, `256 KB` total bytes, and `300.0` seconds TTL) and automatically flushes them when the peer reconnects or announces presence.
 - **Features Intentionally Omitted (Flood Mesh Design):**
   - *Dynamic distance-vector or link-state routing tables (e.g., AODV, DSR):* Not used; BitChat uses TTL-bounded flood routing (`max_hops` 1–7, default 3) with deterministic SHA-256 `[:16]` deduplication and 10–50 ms collision jitter.
   - *Persistent on-disk store-and-forward across process restarts:* Queued packets are held in volatile memory only and expire after 300 seconds.

@@ -54,7 +54,7 @@ jobs:
 
       - name: Validate Release Data JSON Schema
         run: |
-          python3 -c "import json, tomllib; pyproject_ver = tomllib.load(open('pyproject.toml', 'rb'))['project']['version']; data = json.load(open('website/assets/data/releases.json')); assert data['version'] == pyproject_ver, f'Version mismatch: {data[\"version\"]} != {pyproject_ver}'; assert data['version'] == '0.3.2'; print(f'Validated releases.json version {pyproject_ver}: {len(data[\"packages\"])} packages found.')"
+          python3 -c "import json, tomllib; pyproject_ver = tomllib.load(open('pyproject.toml', 'rb'))['project']['version']; data = json.load(open('website/assets/data/releases.json')); assert data['version'] == pyproject_ver, f'Version mismatch: {data[\"version\"]} != {pyproject_ver}'; assert data['release_tag'] == f'v{pyproject_ver}'; assert len(data['packages']) >= 7; print(f'Validated releases.json version {pyproject_ver}: {len(data[\"packages\"])} packages found.')"
 
   deploy:
     environment:

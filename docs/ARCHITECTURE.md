@@ -21,17 +21,18 @@ Transport Abstraction Layer (BaseTransport — bitchat.transport)
 
 ## Native Rust Core (`rust/bitchat-core` / `bitchat._bitchat_core`)
 
-In `v0.3.2`, performance-critical wire, framing, fragmentation, reassembly, deduplication, and rate-limiting operations are implemented in Rust (`rust/bitchat-core/src/`) and compiled into the `bitchat._bitchat_core` extension via PyO3 (`abi3-py312`) and Maturin (`src/bitchat/_native.py`):
+In `v0.3.3` (Phase 2.2), protocol-critical wire codecs, cryptography, Noise XX sessions, mesh routing, peer state management, collision-safe identity binding, and transport state helpers execute authoritatively in compiled Rust (`rust/bitchat-core/src/`) via PyO3 (`abi3-py312`) and Maturin (`src/bitchat/_native.py`):
 
-- **`protocol.rs`**: `encode_packet_raw`, `decode_packet_raw`, `pad_packet_data`, `unpad_packet_data`, `get_optimal_block_size`, `peer_id_to_hex`, `peer_id_from_hex`.
+- **`protocol.rs`**: `encode_packet_raw`, `decode_packet_raw`, `pad_packet_data`, `unpad_packet_data`, `get_optimal_block_size`, `peer_id_to_hex`, `peer_id_from_hex`, `classify_peer_id_raw`, `normalize_peer_id_raw`.
 - **`fragmentation.rs`**: `should_fragment_bytes`, `split_chunks`, `create_fragment_payload`, `parse_fragment_payload`, `fragment_encoded_packet_raw`, and `NativeFragmentReassembler`.
 - **`framing.rs`**: `encode_frame_bytes` and `NativeStreamFramer` (8-byte `BC\x01\x00` + length-prefixed TCP stream assembly).
 - **`crypto.rs`**: `ed25519_*`, `x25519_*` (with low-order Curve25519 point rejection), `aes_gcm_encrypt` / `aes_gcm_decrypt`, `noise_hkdf_raw`, `legacy_hkdf_raw`, `pbkdf2_derive_channel_key`, `calculate_fingerprint_raw`, and `derive_identity_from_private`.
-- **`noise.rs`**: `determine_handshake_role_raw`, `NativeNoiseCipherState`, `NativeNoiseSymmetricState`, `NativeNoiseHandshakeState`, `NativeNoiseSession`, and the 12-phase deterministic `NativeHandshakeStateMachine` (`Discovered` through `Closed`) with automatic key zeroization on drop.
-- **`mesh.rs`**: `compute_packet_id_raw`, `NativePacketDeduplicator` (SHA-256 `[:16]` LRU/TTL cache), `NativePeerRateLimiter`, `NativeMeshRouter` (single-pass packet evaluation and route table), `NativeStoreAndForwardQueue`, and `NativeAckTracker`.
-- **`lan.rs`**: `encode_discovery_packet_raw`, `decode_discovery_packet_raw`, `select_best_lan_ip`, `compute_subnet_broadcast`, `compute_broadcast_targets`, `arbitrate_simultaneous_connection`, `NativeIpRateLimiter`, and Tokio async TCP/UDP helpers (`tokio_send_framed_packet`, `tokio_udp_broadcast_beacon`).
-- **`ble.rs`**: `encode_ble_manufacturer_payload`, `decode_ble_manufacturer_payload`, `compute_ble_write_chunk_size`, and `NativeBleConnectionEngine` (with pre-ready notification buffering during `SUBSCRIBING`).
-- **Automatic Fallback & Differential Parity**: Every Rust function and class has a pure-Python counterpart in `src/bitchat/` with tagged exception translation (`raise_mapped_error`), verified by differential equivalence tests (`tests/unit/test_native_core.py`). See [`docs/ROADMAP.md`](ROADMAP.md) for the 7-stage migration roadmap.
+- **`noise.rs`**: `determine_handshake_role_raw`, `parse_noise_identity_announce_raw`, `NativeNoiseCipherState` (with nonce-0 replay protection and `u32::MAX` nonce-exhaustion fail-closed enforcement), `NativeNoiseSymmetricState`, `NativeNoiseHandshakeState`, authoritative `NativeNoiseSession` (embedding `NativeHandshakeStateMachine` and controlled legacy `bitchat-tui` peer-ID support with collision-safe fingerprint pinning and zeroize-on-drop memory scrubbing).
+- **`engine.rs`**: `NativePeerStateEngine` (bounded peer table, anti-spoofing nicknames, bounded pending DM queues, collision-safe identity bindings distinguishing `observed`, `authenticated`, and `verified`) and cohesive single-FFI-crossing `NativeProtocolEngine` (decode -> reassemble -> route -> Noise XX dispatch -> encode in one native transition).
+- **`mesh.rs`**: `compute_packet_id_raw`, `NativePacketDeduplicator` (SHA-256 `[:16]` LRU/TTL cache), `NativePeerRateLimiter`, authoritative single-pass `NativeMeshRouter`, authoritative `NativeStoreAndForwardQueue`, and `NativeAckTracker` (integrated into `SessionCoordinator`).
+- **`lan.rs`**: `encode_discovery_packet_raw`, `decode_discovery_packet_raw`, `decode_discovery_packet_full_raw`, `select_best_lan_ip`, `compute_subnet_broadcast`, `compute_broadcast_targets`, `arbitrate_simultaneous_connection`, `NativeIpRateLimiter` (integrated into `LANDiscovery`), and Tokio async TCP/UDP helpers (`tokio_send_framed_packet`, `tokio_udp_broadcast_beacon`).
+- **`ble.rs`**: `encode_ble_manufacturer_payload`, `decode_ble_manufacturer_payload`, `compute_ble_write_chunk_size` (integrated with negotiated ATT MTU in `BLEConnection`/`BLETransport`), and `NativeBleConnectionEngine` (with pre-ready notification buffering during `SUBSCRIBING`).
+- **Single Authoritative State & Differential Reference**: Active native sessions, mesh routers, and store-and-forward queues never duplicate runtime execution in Python. Pure-Python reference classes (`PyNoiseSession`, `PyMeshRouter`, `PyStoreAndForwardQueue`, etc.) are retained strictly for differential verification (`tests/unit/test_native_core.py`, `tests/interoperability/test_tui_interop.py`) and non-native fallback. See [`docs/ROADMAP.md`](ROADMAP.md) for the 7-stage migration roadmap.
 
 ## Module Responsibilities
 
@@ -230,7 +231,7 @@ All transports implement `BaseTransport` (`bitchat.transport.base`):
 3. **Transport Switching & Persistent Device Identity**:
    - Switching between `Bluetooth LE`, `Local Network (LAN)`, and `Offline Mode` (`/transport`, Connection Modal, or Settings screen `F3`) cleanly stops the outgoing transport, closes active sockets/GATT links, and tears down ephemeral `NoiseSession` cipher states.
    - Your persistent device identity (`LocalIdentity` stored in `~/.bitchat/identity.json`) is **preserved** across transport switches and application restarts so your `peer_id` and 64-character SHA-256 fingerprint remain stable for trusted contacts.
-   - `~/.bitchat/identity.json` stores private keys as hexadecimal strings protected by OS file permissions (POSIX mode `0600`; protected current-user Windows DACL) and cross-process file locking (`identity.json.lock`); keys are not encrypted with a user passphrase at rest in `v0.3.2`.
+   - `~/.bitchat/identity.json` stores private keys as hexadecimal strings protected by OS file permissions (POSIX mode `0600`; protected current-user Windows DACL) and cross-process file locking (`identity.json.lock`); keys are not encrypted with a user passphrase at rest in `v0.3.3`.
 
 ## Dependency Rules
 - Higher layers depend on lower layers, never the reverse.
