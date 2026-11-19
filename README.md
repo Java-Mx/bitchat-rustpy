@@ -8,18 +8,48 @@
 
 *Terminal-native · No servers · No accounts · No internet required*
 
-[![Security](https://github.com/Java-Mx/bitchat-rustpy/actions/workflows/security.yml/badge.svg)](https://github.com/Java-Mx/bitchat-rustpy/actions/workflows/security.yml)
-[![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Ruff](https://img.shields.io/badge/linter-ruff-orange)](https://docs.astral.sh/ruff/)
-[![Pyright](https://img.shields.io/badge/type%20check-pyright-blue)](https://github.com/microsoft/pyright)
-[![Dependabot](https://img.shields.io/badge/dependabot-enabled-blue?logo=dependabot)](https://github.com/Java-Mx/bitchat-rustpy/blob/main/.github/dependabot.yml)
-[![Last Commit](https://img.shields.io/github/last-commit/Java-Mx/bitchat-rustpy/main)](https://github.com/Java-Mx/bitchat-rustpy/commits/main)
-[![Repo Size](https://img.shields.io/github/repo-size/Java-Mx/bitchat-rustpy)](https://github.com/Java-Mx/bitchat-rustpy)
-[![Issues](https://img.shields.io/github/issues/Java-Mx/bitchat-rustpy)](https://github.com/Java-Mx/bitchat-rustpy/issues)
-[![Contributors](https://img.shields.io/github/contributors/Java-Mx/bitchat-rustpy)](https://github.com/Java-Mx/bitchat-rustpy/graphs/contributors)
-[![Stars](https://img.shields.io/github/stars/Java-Mx/bitchat-rustpy?style=flat)](https://github.com/Java-Mx/bitchat-rustpy/stargazers)
-[![Forks](https://img.shields.io/github/forks/Java-Mx/bitchat-rustpy?style=flat)](https://github.com/Java-Mx/bitchat-rustpy/network/members)
+<!-- Build & Quality -->
+[![CI](https://img.shields.io/github/actions/workflow/status/Java-Mx/bitchat-rustpy/ci.yml?branch=main&label=CI&logo=githubactions&logoColor=white&style=flat-square)](https://github.com/Java-Mx/bitchat-rustpy/actions/workflows/ci.yml)
+[![Security](https://img.shields.io/github/actions/workflow/status/Java-Mx/bitchat-rustpy/security.yml?branch=main&label=Security&logo=githubactions&logoColor=white&style=flat-square)](https://github.com/Java-Mx/bitchat-rustpy/actions/workflows/security.yml)
+[![Build](https://img.shields.io/github/actions/workflow/status/Java-Mx/bitchat-rustpy/build.yml?branch=main&label=Build&logo=githubactions&logoColor=white&style=flat-square)](https://github.com/Java-Mx/bitchat-rustpy/actions/workflows/build.yml)
+[![Ruff](https://img.shields.io/badge/Linter-Ruff-D7FF64?style=flat-square&logo=ruff&logoColor=black)](https://docs.astral.sh/ruff/)
+[![Pyright](https://img.shields.io/badge/Types-Pyright-3178C6?style=flat-square&logo=python&logoColor=white)](https://github.com/microsoft/pyright)
+[![Dependabot](https://img.shields.io/badge/Dependabot-Enabled-025E8C?style=flat-square&logo=dependabot&logoColor=white)](https://github.com/Java-Mx/bitchat-rustpy/blob/main/.github/dependabot.yml)
+
+<!-- Operating Systems & Platforms -->
+[![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011%20x64-0078D6?style=flat-square&logo=windows11&logoColor=white)](docs/platform/WINDOWS.md)
+[![Linux](https://img.shields.io/badge/Linux-x86__64-FCC624?style=flat-square&logo=linux&logoColor=black)](docs/platform/LINUX.md)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-.deb%20%2F%20BlueZ-E95420?style=flat-square&logo=ubuntu&logoColor=white)](docs/platform/LINUX.md)
+[![Debian](https://img.shields.io/badge/Debian-.deb%20%2F%20BlueZ-A81D33?style=flat-square&logo=debian&logoColor=white)](docs/platform/LINUX.md)
+[![Fedora](https://img.shields.io/badge/Fedora-AppImage%20%2F%20Source-51A2DA?style=flat-square&logo=fedora&logoColor=white)](docs/platform/LINUX.md)
+[![macOS](https://img.shields.io/badge/macOS-arm64%20Wheel%20%2F%20Source-000000?style=flat-square&logo=apple&logoColor=white)](docs/platform/MACOS.md)
+
+<!-- Languages & Native Architecture -->
+[![Python](https://img.shields.io/badge/Python-3.12%20%7C%203.13%20%28CI%29-3776AB?style=flat-square&logo=python&logoColor=white)](pyproject.toml)
+[![Rust](https://img.shields.io/badge/Rust-Native%20Core-B7410E?style=flat-square&logo=rust&logoColor=white)](rust/bitchat-core/Cargo.toml)
+[![PyO3](https://img.shields.io/badge/PyO3-0.24%20ABI3-CE422B?style=flat-square&logo=rust&logoColor=white)](rust/bitchat-core/Cargo.toml)
+[![Maturin](https://img.shields.io/badge/Maturin-Build%20Backend-2F6F4E?style=flat-square&logo=python&logoColor=white)](pyproject.toml)
+[![Cargo](https://img.shields.io/badge/Cargo-Workspace-8C4A2F?style=flat-square&logo=rust&logoColor=white)](Cargo.toml)
+
+<!-- Application Capabilities -->
+[![Bluetooth LE](https://img.shields.io/badge/Bluetooth%20LE-GATT%20Mesh-0082FC?style=flat-square&logo=bluetooth&logoColor=white)](#bluetooth-low-energy)
+[![LAN Mesh](https://img.shields.io/badge/LAN%20Mesh-UDP%20%2B%20TCP-0F766E?style=flat-square)](#lan--wi-fi)
+[![Peer-to-Peer](https://img.shields.io/badge/Peer--to--Peer-No%20Central%20Server-1E293B?style=flat-square)](docs/ARCHITECTURE.md)
+[![Noise XX](https://img.shields.io/badge/E2EE-Noise%20XX%20%2B%20ChaCha20--Poly1305-059669?style=flat-square)](docs/security/NOISE.md)
+[![Offline Messaging](https://img.shields.io/badge/Messaging-Offline--First-334155?style=flat-square)](#transports)
+
+<!-- Release & Distribution -->
+[![Release](https://img.shields.io/github/v/release/Java-Mx/bitchat-rustpy?display_name=tag&label=Release&color=10B981&style=flat-square)](https://github.com/Java-Mx/bitchat-rustpy/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Java-Mx/bitchat-rustpy/total?label=Downloads&color=0EA5E9&style=flat-square)](https://github.com/Java-Mx/bitchat-rustpy/releases)
+[![WinGet](https://img.shields.io/badge/WinGet-v0.3.3%20PR%20Pending-D97706?style=flat-square)](https://github.com/microsoft/winget-pkgs/pull/483934)
+[![License](https://img.shields.io/github/license/Java-Mx/bitchat-rustpy?label=License&color=2563EB&style=flat-square)](LICENSE)
+
+<!-- Repository & Community -->
+[![Stars](https://img.shields.io/github/stars/Java-Mx/bitchat-rustpy?style=flat-square&logo=github&color=EAB308)](https://github.com/Java-Mx/bitchat-rustpy/stargazers)
+[![Forks](https://img.shields.io/github/forks/Java-Mx/bitchat-rustpy?style=flat-square&logo=github&color=64748B)](https://github.com/Java-Mx/bitchat-rustpy/network/members)
+[![Issues](https://img.shields.io/github/issues/Java-Mx/bitchat-rustpy?style=flat-square&logo=github&color=3B82F6)](https://github.com/Java-Mx/bitchat-rustpy/issues)
+[![Contributors](https://img.shields.io/github/contributors/Java-Mx/bitchat-rustpy?style=flat-square&logo=github&color=8B5CF6)](https://github.com/Java-Mx/bitchat-rustpy/graphs/contributors)
+[![Last Commit](https://img.shields.io/github/last-commit/Java-Mx/bitchat-rustpy/main?style=flat-square&logo=git&logoColor=white&label=Last%20Commit&color=475569)](https://github.com/Java-Mx/bitchat-rustpy/commits/main)
 
 <br /><br />
 
