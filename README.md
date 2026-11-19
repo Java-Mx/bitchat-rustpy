@@ -163,7 +163,10 @@ cd bitchat-rustpy
 
 # Using uv (recommended)
 uv sync
-uv run bitchat
+uv run --no-sync bitchat
+
+# Rebuilding the native Rust extension safely on Windows (with .pyd lock diagnostics):
+uv run --no-sync python scripts/build_native.py
 
 # Or with pip in a virtual environment:
 py -3.12 -m venv .venv

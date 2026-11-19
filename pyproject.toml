@@ -59,6 +59,14 @@ bindings = "pyo3"
 features = ["pyo3/extension-module"]
 editable-profile = "release"
 
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "Cargo.toml" },
+    { file = "rust/bitchat-core/Cargo.toml" },
+    { file = "rust/bitchat-core/src/**/*.rs" },
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

@@ -2,10 +2,11 @@
 
 ## 1. Prerequisites & Environment Setup
 
-- **Python**: `3.10+` (`3.12` recommended for release packaging; CI tests `3.10`, `3.11`, and `3.12`)
+- **Python**: `3.12+` (`3.12` / `3.13` tested in CI)
 - **Rust Toolchain**: Stable Rust (`rustc` & `cargo` via [rustup](https://rustup.rs/), edition 2021)
 - **Package Manager**: [uv](https://github.com/astral-sh/uv)
 - **Native Extension Builder**: [Maturin](https://www.maturin.rs/) (installed automatically in the `uv` dev group)
+- **Windows Shell**: Windows PowerShell 5.1 (`powershell.exe`) or PowerShell 7+ (`pwsh.exe`)
 
 From the repository root, synchronize all Python dependencies and build the editable package:
 
@@ -16,10 +17,66 @@ uv sync --all-groups
 To compile and install the optimized Rust native extension (`bitchat._bitchat_core`) into your virtual environment:
 
 ```bash
+# Recommended safe/serialized builder (checks Windows .pyd locks & verifies import):
+uv run --no-sync python scripts/build_native.py
+
+# Or directly via Maturin:
 uv run --no-sync maturin develop --release
 ```
 
-> **Windows Note:** If rebuilding `_bitchat_core.pyd` while an existing `.pyd` is present on Windows, ensure no running `bitchat` or `python` process holds a lock on `src/bitchat/_bitchat_core.pyd`.
+### 1.1 Reliable Windows PowerShell 5.1 Development Workflow
+
+On Windows, **always separate building the native Rust extension from launching BitChat** by using `--no-sync` when launching:
+
+```powershell
+# 1. Build (serialized with pre-flight .pyd lock detection + post-build import verification)
+Set-Location D:\bitchat-python
+uv run --no-sync python scripts/build_native.py
+# Or using the PowerShell 5.1 helper:
+powershell -ExecutionPolicy Bypass -File .\scripts\dev-windows.ps1 -Action Build
+
+# 2. Verify native extension import
+uv run --no-sync python -c "import bitchat._bitchat_core; print('Native Rust extension loaded successfully')"
+
+# 3. Launch BitChat (without triggering an automatic editable rebuild)
+uv run --no-sync bitchat
+```
+
+### 1.2 Troubleshooting Windows `.pyd` File Locks (`os error 32`)
+
+**Symptom:** Running `uv run bitchat` (without `--no-sync`) or `maturin develop --release` completes Rust compilation (`Finished 'release' profile`), then fails during copy:
+
+```text
+Failed to copy:
+D:\bitchat-python\target\maturin\_bitchat_core.dll
+to:
+D:\bitchat-python\src\bitchat\_bitchat_core.pyd
+The process cannot access the file because it is being used by another process. (os error 32)
+```
+
+**Root Cause:** Rust compilation **succeeded**. Unlike Linux/macOS, the Windows kernel exclusively locks any loaded `.pyd`/`.dll` image (`src\bitchat\_bitchat_core.pyd` → `os error 32`) and running console-script executable (`.venv\Scripts\bitchat.exe` → `Access is denied (os error 5)`) while a process has them mapped in memory. If another BitChat instance, Python REPL, pytest runner, or IDE debugger has `src\bitchat\_bitchat_core.pyd` or `.venv\Scripts\bitchat.exe` open, Maturin/`uv pip install` cannot replace them in place, and running `uv run bitchat` without `--no-sync` triggers an editable rebuild whenever `pyproject.toml`, `Cargo.toml`, or Rust sources change.
+
+**Diagnosis & Safe Recovery:**
+
+1. Check lock status and identify the exact locking process (uses the built-in Windows Restart Manager API + CIM):
+   ```powershell
+   uv run --no-sync python scripts/build_native.py --check-locks
+   # Or via the PowerShell 5.1 helper:
+   powershell -ExecutionPolicy Bypass -File .\scripts\dev-windows.ps1 -Action CheckLocks
+   ```
+   Or inspect candidate processes manually in PowerShell 5.1:
+   ```powershell
+   Get-CimInstance Win32_Process |
+   Where-Object { $_.Name -match '^(python|pythonw|bitchat|uv)\.exe$' } |
+   Select-Object ProcessId, ParentProcessId, Name, CommandLine
+   ```
+2. Close **only** the identified BitChat / Python process holding the extension (press `Ctrl+Q` / `/exit` in BitChat, or close that specific PID via `Stop-Process -Id <PID>`, or run `.\scripts\dev-windows.ps1 -Action CloseBitChat` which prompts before closing verified BitChat processes only). **Never** run indiscriminate commands like `taskkill /IM python.exe /F`.
+3. Retry the build and launch with `--no-sync`:
+   ```powershell
+   uv run --no-sync python scripts/build_native.py
+   uv run --no-sync bitchat
+   ```
+4. **Concurrent Builds:** `scripts/build_native.py` acquires an OS-managed lock (`target/.bitchat-native-build.lock`) so simultaneous builds do not race on `_bitchat_core.pyd`. Pass `--wait` to queue behind an active build; locks are released automatically by the OS even if a build is interrupted.
 
 ---
 
