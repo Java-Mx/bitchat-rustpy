@@ -666,11 +666,11 @@ Identity persists to `~/.bitchat/identity.json` (mode `0600` on POSIX; restricte
 
 | Platform | Install | BLE Central | BLE Peripheral | LAN | Notes |
 |---|:---:|:---:|:---:|:---:|---|
-| Windows 10 / 11 | ✓ | ✓ | Hardware/driver dependent | ✓ | WinRT Bluetooth stack; GATT peripheral mode depends on driver/adapter |
-| Linux (BlueZ) | ✓ | ✓ | ✓ | ✓ | Requires BlueZ and D-Bus daemon running; standard user permissions |
-| macOS 12+ | ✓ | ✓ | ✓ | ✓ | Requires terminal Bluetooth privacy permission in System Settings |
+| Windows 10 / 11 (`x64`) | ✓ (`.exe` / WinGet / `.whl`) | ✓ | Hardware/driver dependent | ✓ | WinRT Bluetooth stack; GATT peripheral mode depends on driver/adapter |
+| Linux (`x86_64`, BlueZ) | ✓ (`.deb` / `AppImage` / `.whl`) | ✓ | ✓ | ✓ | Requires BlueZ and D-Bus daemon running; standard user permissions |
+| macOS 12+ (`arm64` / Intel) | ✓ (`arm64` `.whl` / source) | Experimental (`CoreBluetooth`) | ❌ Not implemented | ✓ | LAN & Offline supported; no `.dmg`/`.pkg` installer or BLE Peripheral yet |
 
-**Physical two-machine validation** — automated integration tests (including two-node Noise XX over simulated BLE and over framed TCP) pass in CI. Real over-the-air validation across two separate physical machines is not yet confirmed.
+**Verification status** — GitHub Actions CI passes on `ubuntu-latest` and `windows-latest` across Python `3.12` and `3.13`, plus `macos-latest` (`arm64`) wheel build/tests. Automated integration tests (including two-node Noise XX over simulated BLE and framed TCP) pass; real over-the-air validation across two separate physical machines is **untested**.
 
 ---
 
@@ -1117,6 +1117,7 @@ uv run --no-sync pytest -q
 - **Documentation Index:** [`docs/INDEX.md`](docs/INDEX.md)
 - **Support & Troubleshooting:** [`SUPPORT.md`](SUPPORT.md)
 - **Rust Migration Roadmap:** [`docs/ROADMAP.md`](docs/ROADMAP.md)
+- **`v0.3.3` Release Notes & Migration Impact:** [`docs/release/V0.3.3-RELEASE-NOTES.md`](docs/release/V0.3.3-RELEASE-NOTES.md), [`docs/release/V0.3.3-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md`](docs/release/V0.3.3-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md), and [`docs/release/PHASE-2.2-IMPLEMENTATION-AND-VERIFICATION-REPORT.md`](docs/release/PHASE-2.2-IMPLEMENTATION-AND-VERIFICATION-REPORT.md)
 - **Security Policy & Vulnerability Reporting:** [`SECURITY.md`](SECURITY.md) and [`docs/security/THREAT_MODEL.md`](docs/security/THREAT_MODEL.md)
 - **Privacy Policy & Data Handling:** [`PRIVACY_POLICY.md`](PRIVACY_POLICY.md) *(Draft)* and [`docs/security/DATA_HANDLING.md`](docs/security/DATA_HANDLING.md)
 - **Terms of Use:** [`TERMS_OF_USE.md`](TERMS_OF_USE.md) *(Draft)*

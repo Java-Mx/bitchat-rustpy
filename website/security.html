@@ -180,10 +180,10 @@
           Threats Mitigated
         </h3>
         <ul style="list-style: square; padding-left: 1.25rem; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;">
-          <li><strong>Passive Eavesdropping:</strong> Direct channel payloads are encrypted with forward-secret keys.</li>
-          <li><strong>Active Packet Tampering:</strong> Poly1305 authenticators ensure message integrity; modified frames are discarded.</li>
-          <li><strong>Replay Attacks:</strong> The Rust native <code>NativePacketDeduplicator</code> maintains an LRU cache of recently processed packet IDs to suppress replays.</li>
-          <li><strong>Server Compulsion:</strong> No central servers or accounts exist to be subpoenaed, breached, or monitored.</li>
+          <li><strong>Authoritative Rust Noise XX &amp; Zeroization:</strong> Direct peer sessions execute inside Rust <code>NativeNoiseSession</code> with <code>zeroize::ZeroizeOnDrop</code>, zero eager Python session key copies, and fail-closed <code>u32::MAX</code> nonce exhaustion guards.</li>
+          <li><strong>Strict Replay &amp; AEAD Protection:</strong> 1,024-entry sliding replay window tracks every wire nonce including nonce <code>0</code>, advancing strictly after ChaCha20-Poly1305 authentication tag verification succeeds.</li>
+          <li><strong>Collision-Safe Identity &amp; Trust Separation:</strong> <code>NativePeerStateEngine</code> rejects colliding keys for both modern SHA-256 peer IDs and post-auth legacy <code>bitchat-tui</code> peer IDs, keeping <code>observed</code>, <code>authenticated</code>, and user-confirmed <code>verified</code> trust strictly separate.</li>
+          <li><strong>Bounded DoS Defenses &amp; No Central Servers:</strong> Pending DM queues are capped (32 per peer / 512 global), UDP discovery is rate-limited natively via <code>NativeIpRateLimiter</code>, and no central servers or accounts exist.</li>
         </ul>
       </div>
 
@@ -197,10 +197,10 @@
           Known Limitations &amp; Non-Guarantees
         </h3>
         <ul style="list-style: square; padding-left: 1.25rem; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;">
-          <li><strong>RF &amp; Network Traffic Analysis:</strong> Physical radio observers can detect BLE transmission events and MAC addresses. LAN observers can inspect UDP discovery frames.</li>
-          <li><strong>Physical Device Compromise:</strong> Long-term identity keys in <code>~/.bitchat/identity.json</code> rely on OS file permissions (0600 on POSIX). BitChat does not yet encrypt identity keys with an on-disk passphrase.</li>
-          <li><strong>Broadcast Channels:</strong> Messages broadcast to public channels (e.g. <code>#public</code>) are not end-to-end encrypted; all local peers receive them as intended.</li>
-          <li><strong>Radio Denial of Service:</strong> Physical RF jamming or Bluetooth connection saturations cannot be prevented by application-level software.</li>
+          <li><strong>RF &amp; Network Traffic Analysis:</strong> Physical radio observers can detect BLE transmission events and MAC addresses. LAN observers can inspect UDP discovery frames and unencrypted outer routing headers.</li>
+          <li><strong>Physical Device Compromise &amp; OS Memory:</strong> Long-term identity keys in <code>~/.bitchat/identity.json</code> rely on OS file permissions (<code>0600</code> on POSIX, user DACL on Windows) without on-disk passphrase encryption yet; Rust <code>zeroize</code> scrubs owned memory on drop but cannot guarantee erasure from OS swap or kernel crash dumps.</li>
+          <li><strong>Authentication vs. Real-World Identity:</strong> Completing Noise XX proves cryptographic possession of a peer's static key (<code>authenticated</code>), not real-world identity — out-of-band fingerprint verification (<code>/verify</code>) is required for <code>verified</code> trust.</li>
+          <li><strong>Broadcast Channels &amp; Radio DoS:</strong> Public broadcast messages (<code>#public</code>) are intentionally unencrypted for local mesh participants, and physical RF jamming cannot be prevented by software.</li>
         </ul>
       </div>
     </div>

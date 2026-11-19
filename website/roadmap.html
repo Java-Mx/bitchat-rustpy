@@ -10,11 +10,11 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="BitChat RustPy" />
   <meta property="og:title" content="Development Roadmap — BitChat RustPy" />
-  <meta property="og:description" content="Verified development status, Phase 1 deliverables, Phase 2 in-progress work, and Phase 3 native Rust milestones." />
+  <meta property="og:description" content="BitChat RustPy 7-stage Rust migration roadmap: Stages 1–3 completed through v0.3.3, Stages 4–5 transport foundations wired, and Stages 6–7 planned." />
   <meta property="og:url" content="https://java-mx.github.io/bitchat-rustpy/roadmap.html" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Development Roadmap — BitChat RustPy" />
-  <meta name="twitter:description" content="Verified development status, Phase 1 deliverables, Phase 2 in-progress work, and Phase 3 native Rust milestones." />
+  <meta name="twitter:description" content="BitChat RustPy 7-stage Rust migration roadmap: Stages 1–3 completed through v0.3.3, Stages 4–5 transport foundations wired, and Stages 6–7 planned." />
 
   <link rel="icon" type="image/svg+xml" href="assets/img/brand/Bitchat-Icon-Framed.svg" />
   <link rel="alternate icon" type="image/x-icon" href="assets/img/brand/bitchat.ico" />
@@ -173,21 +173,22 @@
           <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--status-ok);">November 2026</span>
         </div>
         <p style="font-size: 0.925rem; color: var(--text-secondary);">
-          Made Rust the authoritative execution owner for Noise XX sessions, single-pass mesh routing, peer state management, collision-safe identity binding, and cohesive single-FFI protocol dispatch while retaining the Python Textual UI and differential reference suite.
+          Made Rust the authoritative execution owner for Noise XX sessions, single-pass mesh routing, peer state management, collision-safe identity binding, and cohesive single-FFI protocol dispatch while retaining the Python Textual UI, asyncio LAN sockets, Bleak/WinRT/BlueZ BLE drivers, and differential reference suite.
+          <a href="https://github.com/Java-Mx/bitchat-rustpy/blob/main/docs/release/V0.3.3-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md" target="_blank" rel="noopener noreferrer">Read the v0.3.3 Rust Migration Impact Report &rarr;</a>
         </p>
 
         <div class="phase-items-grid">
           <div class="phase-item">
             <div class="phase-item-title">&check; Authoritative NativeNoiseSession &amp; Nonce Safety</div>
-            <div class="phase-item-desc">Single Rust-owned cipher state with embedded 12-phase FSM, nonce-0 replay protection, and u32::MAX exhaustion fail-closed enforcement.</div>
+            <div class="phase-item-desc">Single Rust-owned cipher state with embedded 12-phase FSM, zero eager Python key copies, strict nonce-0 replay protection, and u32::MAX exhaustion fail-closed enforcement.</div>
           </div>
           <div class="phase-item">
             <div class="phase-item-title">&check; Cohesive Single-Crossing NativeProtocolEngine</div>
-            <div class="phase-item-desc">Decode, fragment reassembly, mesh routing, Noise XX dispatch, and outbound encoding in one FFI call (7.28x faster inbound DM pipeline).</div>
+            <div class="phase-item-desc">Decode, fragment reassembly, mesh routing, Noise XX dispatch, and outbound encoding in 1 PyO3 crossing (7.28x faster inbound DM pipeline and ~132x lower Python tracemalloc peak allocation in measured 1,000-frame workloads).</div>
           </div>
           <div class="phase-item">
             <div class="phase-item-title">&check; Stage 3 Peer State Engine &amp; Legacy TUI Interop</div>
-            <div class="phase-item-desc">Controlled legacy bitchat-tui 4-byte-zero-extended peer-ID support with post-auth collision-safe pinning and separated authenticated/verified trust levels.</div>
+            <div class="phase-item-desc">Controlled legacy bitchat-tui 4-byte-zero-extended peer-ID support with post-auth collision-safe pinning, bounded DM queues (32/peer, 512 global), and distinct observed/authenticated/verified trust levels.</div>
           </div>
           <div class="phase-item">
             <div class="phase-item-title">&check; Single-Pass Mesh, LAN Rate Limiter &amp; BLE MTU Sizing</div>
@@ -196,68 +197,69 @@
         </div>
       </div>
 
-      <!-- Phase 3: Next Milestone -->
+      <!-- Stages 4-5: Next Milestone -->
       <div class="roadmap-phase-card">
         <div class="phase-header">
           <div>
-            <span class="phase-badge phase-progress">PHASE 3 (STAGES 4–6): NEXT MILESTONE (v0.4.0)</span>
-            <h2 style="font-size: 1.35rem; color: #ffffff; margin-top: 0.4rem;">Full Native Rust Async Transports &amp; Session Coordinator</h2>
+            <span class="phase-badge phase-progress">STAGES 4–5: FOUNDATIONS WIRED — FULL NATIVE TRANSPORTS NEXT</span>
+            <h2 style="font-size: 1.35rem; color: #ffffff; margin-top: 0.4rem;">Fully Native Rust LAN (Tokio) &amp; OS BLE Drivers</h2>
           </div>
           <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent);">Upcoming</span>
         </div>
         <p style="font-size: 0.925rem; color: var(--text-secondary);">
-          Building on the completed Stage 3 Mesh/Peer State Engine and Stage 4–5 LAN/BLE foundations to move full TCP/UDP event loops, OS BLE drivers, and storage directly into Rust.
+          Logic foundations (<code>lan.rs</code>, <code>ble.rs</code>) are already wired into runtime execution; this phase migrates the remaining Python <code>asyncio</code> socket loops and OS BLE drivers natively into Rust.
+          <a href="https://github.com/Java-Mx/bitchat-rustpy/blob/main/docs/ROADMAP.md" target="_blank" rel="noopener noreferrer">View full acceptance criteria in ROADMAP.md &rarr;</a>
         </p>
 
         <div class="phase-items-grid">
           <div class="phase-item">
-            <div class="phase-item-title">&bull; Full Tokio LAN Transport Runtime</div>
-            <div class="phase-item-desc">Move full UDP discovery and TCP server/client loops from Python asyncio into native Tokio tasks.</div>
+            <div class="phase-item-title">&bull; Stage 4: Full Tokio LAN Transport Runtime</div>
+            <div class="phase-item-desc">Move active UDP discovery loops, TCP listener/client management, and 32-connection bounds from Python asyncio into Tokio feeding NativeProtocolEngine directly.</div>
           </div>
           <div class="phase-item">
-            <div class="phase-item-title">&bull; Native OS BLE Drivers</div>
-            <div class="phase-item-desc">Direct Rust WinRT and BlueZ D-Bus GATT server/client backends.</div>
+            <div class="phase-item-title">&bull; Stage 5: Native OS BLE Central &amp; Peripheral Drivers</div>
+            <div class="phase-item-desc">Replace Bleak / WinRT / BlueZ D-Bus Python wrappers with native Rust OS backends (windows-rs, zbus/bluer, CoreBluetooth).</div>
           </div>
           <div class="phase-item">
-            <div class="phase-item-title">&bull; Native Storage &amp; Passphrase-Protected Keys</div>
-            <div class="phase-item-desc">Rust identity/config persistence with optional passphrase-encrypted identity.json at rest.</div>
+            <div class="phase-item-title">&bull; Stage 6: Native Session Coordinator &amp; Encrypted Storage</div>
+            <div class="phase-item-desc">Move remaining coordinator orchestration, ~/.bitchat/ persistence, redacted logging, and optional passphrase-protected identity.json encryption into Rust.</div>
           </div>
           <div class="phase-item">
-            <div class="phase-item-title">&bull; Flathub &amp; Debian Repository Distribution</div>
-            <div class="phase-item-desc">Official Linux repository presence for automated system package updates.</div>
+            <div class="phase-item-title">&bull; Physical Multi-Machine Over-the-Air Hardware Testing</div>
+            <div class="phase-item-desc">Validate live BLE and LAN sessions across physical Windows, Linux, macOS, and bitchat-tui hosts.</div>
           </div>
         </div>
       </div>
 
-      <!-- Phase 3: Planned -->
+      <!-- Stage 7: Final Objective -->
       <div class="roadmap-phase-card">
         <div class="phase-header">
           <div>
-            <span class="phase-badge phase-planned">PHASE 3: PLANNED (v1.0.0)</span>
-            <h2 style="font-size: 1.35rem; color: #ffffff; margin-top: 0.4rem;">Fully Native Rust Application</h2>
+            <span class="phase-badge phase-planned">STAGE 7: PLANNED FINAL OBJECTIVE</span>
+            <h2 style="font-size: 1.35rem; color: #ffffff; margin-top: 0.4rem;">100% Native Rust Application (Retire Python / PyO3)</h2>
           </div>
           <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);">Future Objective</span>
         </div>
         <p style="font-size: 0.925rem; color: var(--text-secondary);">
-          The ultimate architectural goal: complete retirement of the Python runtime, PyO3, and Maturin. BitChat will compile as a single, ultra-lightweight native Rust binary.
+          Only after Stages 4–6 reach full feature and test parity: replace the Python Textual UI and CLI with a standalone native Rust application, removing Python, PyO3, and Maturin completely.
         </p>
 
         <div class="phase-items-grid">
           <div class="phase-item">
-            <div class="phase-item-title">&bull; 100% Native Rust TUI (Ratatui)</div>
-            <div class="phase-item-desc">Replace Textual with a memory-safe, ultra-fast terminal UI engine written in pure Rust.</div>
+            <div class="phase-item-title">&bull; 100% Native Rust TUI (Ratatui) &amp; CLI</div>
+            <div class="phase-item-desc">Replace Textual with a native Rust terminal UI preserving Home Screen, Peer Sidebar, Chat View, Settings, and slash commands.</div>
           </div>
           <div class="phase-item">
             <div class="phase-item-title">&bull; Elimination of Python Runtime</div>
-            <div class="phase-item-desc">Single standalone static binary with instantaneous sub-10ms startup and minimal RAM footprint.</div>
+            <div class="phase-item-desc">Single standalone native binary per supported OS/architecture with minimal memory footprint.</div>
           </div>
           <div class="phase-item">
-            <div class="phase-item-title">&bull; macOS Native CoreBluetooth Integration</div>
-            <div class="phase-item-desc">Direct Rust bindings to Apple's CoreBluetooth frameworks without third-party CLI shims.</div>
+            <div class="phase-item-title">&bull; Native macOS CoreBluetooth &amp; Installers</div>
+            <div class="phase-item-desc">Native macOS BLE Peripheral support and signed native distribution bundles where supported.</div>
           </div>
           <div class="phase-item">
             <div class="phase-item-title">&bull; Independent Third-Party Security Audit</div>
-            <div class="phase-item-desc">Formal cryptographic review of the completed native Rust implementation by an accredited firm.</div>
+            <div class="phase-item-desc">Formal cryptographic review of the completed native Rust implementation.</div>
           </div>
         </div>
       </div>

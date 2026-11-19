@@ -172,11 +172,12 @@ Executed across `tests/unit/test_native_core.py` and `tests/interoperability/tes
 
 | Environment / Test Category | Status | Evidence / Reason |
 |---|---|---|
-| Local Windows 11 x64 (`Python 3.14.7`, Rust stable, `_bitchat_core v0.3.3`) | **PASS** | Full `cargo test` (21/21), `pytest` suite, `ruff`, `pyright`, benchmark script, Inno Setup build + exe CLI verification |
-| GitHub Actions `ubuntu-latest` (`x86_64`) | **CI-VERIFIED** | Full CI + Release workflow (`.deb`, `.AppImage`, `.flatpak`, Linux ABI3 `.whl`, sdist) |
-| GitHub Actions `windows-latest` (`x64`) | **CI-VERIFIED** | Release workflow (`.exe`, Windows ABI3 `.whl`, silent install/uninstall smoke test) |
-| GitHub Actions `macos-latest` (`arm64`) | **CI-VERIFIED** | Release workflow (macOS ABI3 `.whl`, CLI `--version`, native core & interop tests) |
-| Physical two-machine BLE over-the-air (WinRT ↔ BlueZ / `bitchat-tui`) | **UNTESTED / BLOCKED** | No second physical BLE peer machine available in automated agent environment; BLE tested via simulated adapters & WinRT/BlueZ fakes |
+| GitHub Actions CI Matrix (`ubuntu-latest` & `windows-latest`, Python **3.12 & 3.13**) | **CI-VERIFIED** | Full CI gates (`cargo fmt`, `clippy -D warnings`, `cargo test`, `ruff`, `pyright`, full `pytest`) |
+| Local Windows 11 x64 (`Python 3.14.7` *(outside official CI matrix)*, Rust stable, `_bitchat_core v0.3.3`) | **PASS** | `cargo test` (21/21), `pytest` (`1,285` passed / `1` skipped + `6/6` Windows `.pyd` lock tests), `ruff`, `pyright`, `scripts/benchmark_phase22.py`, Inno Setup build + exe CLI verification |
+| GitHub Actions Release (`44473478669`) — `ubuntu-latest` (`x86_64`) | **CI-VERIFIED** | `.deb`, `.AppImage`, Linux ABI3 `.whl`, universal `.tar.gz` + `.sha256` (no `.flatpak` bundle emitted by runner) |
+| GitHub Actions Release (`44473478669`) — `windows-latest` (`x64`) | **CI-VERIFIED** | `.exe` + `.sha256`, Windows ABI3 `.whl` + `.sha256`, WinGet manifest, unattended silent install/uninstall smoke test |
+| GitHub Actions Release (`44473478669`) — `macos-latest` (`arm64`) | **CI-VERIFIED** | macOS Apple Silicon ABI3 `.whl` + `.sha256`, `bitchat --version`, native core & interop tests |
+| Physical two-machine BLE over-the-air (WinRT ↔ BlueZ / `bitchat-tui`) | **UNTESTED / BLOCKED** | No second physical BLE peer machine available in automated environment; BLE tested via simulated adapters & WinRT/BlueZ fakes |
 | Physical two-machine LAN Wi-Fi/Ethernet | **UNTESTED / BLOCKED** | Single-host execution environment; LAN tested via real loopback UDP/TCP sockets |
 | Physical macOS Intel (`x86_64`) hardware | **UNTESTED** | Source-build supported; no Intel macOS runner in CI |
 
@@ -333,11 +334,17 @@ Published via GitHub Actions Release workflow run [`44473478669`](https://github
 ## 25. Commit, Tag, Push & Release Record
 
 - **Author / Committer:** `Java-Mx <96059233+Java-Mx@users.noreply.github.com>`
-- **Phase 2.2 / `v0.3.3` Release Commit:** `e87685c584fb5d1101383faae3054b4a2b3dbc0c` (`feat(protocol): integrate authoritative Rust Noise XX, NativeProtocolEngine, and release v0.3.3`)
-- **Windows `.pyd` File-Lock Build Fix Commit:** `8a90d80a9eb2be0ec79c14f0a32f115268f8e73a` (`fix(windows): handle native extension file locks during editable builds`) — added `scripts/build_native.py` (OS-serialized build lock, Win32 `CreateFileW` + Restart Manager exact PID detection for both `src/bitchat/_bitchat_core.pyd` and `.venv/Scripts/bitchat.exe`, post-build stderr classification, import verification), `scripts/dev-windows.ps1` (PowerShell 5.1 workflow), `[tool.uv] cache-keys`, and `tests/unit/test_windows_native_build.py` (6/6 passing).
+- **Phase 2.2 / `v0.3.3` Implementation Commit:** `e87685c584fb5d1101383faae3054b4a2b3dbc0c` (`feat(protocol): integrate authoritative Rust Noise XX, NativeProtocolEngine, and release v0.3.3`)
+- **Windows `.pyd` File-Lock Build Fix Commit:** `8a90d80a9eb2be0ec79c14f0a32f115268f8e73a` (`fix(windows): handle native extension file locks during editable builds`)
+- **Verified Hash Synchronization Commit:** `57fdb3ff6ba51d9841b69682414f924dcbfccd8c` (`docs(release): synchronize verified v0.3.3 release hashes across manifests, download portal, and website`)
 - **Release Tag:** `v0.3.3` (annotated tag pointing to `e87685c584fb5d1101383faae3054b4a2b3dbc0c`)
-- **GitHub Actions Release Run:** [`44473478669`](https://github.com/Java-Mx/bitchat-rustpy/actions/runs/44473478669) — **SUCCESS** (Windows `.exe` + WinGet + `.whl`, Linux `.deb` + `.AppImage` + `.whl` + `.tar.gz`, macOS `arm64` `.whl`, 15 assets published).
-- **Official Website Deployment:** `.github/workflows/website.yml` — **VERIFIED LIVE** at [https://java-mx.github.io/bitchat-rustpy/](https://java-mx.github.io/bitchat-rustpy/).
+- **GitHub Release Title:** `BitChat v0.3.3 — Phase 2.2 Production Release: Authoritative Rust Protocol Integration, Noise XX Interoperability & Stage 3 Mesh Engine`
+- **GitHub Release URL:** [https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v0.3.3](https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v0.3.3) (15 published assets via workflow run [`44473478669`](https://github.com/Java-Mx/bitchat-rustpy/actions/runs/44473478669))
+- **Official Website Deployment:** `.github/workflows/website.yml` (verified run `44476832577` + follow-up documentation deploy) at [https://java-mx.github.io/bitchat-rustpy/](https://java-mx.github.io/bitchat-rustpy/)
+- **Companion Reports & Roadmap:**
+  - [`docs/release/V0.3.3-RELEASE-NOTES.md`](V0.3.3-RELEASE-NOTES.md)
+  - [`docs/release/V0.3.3-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md`](V0.3.3-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md)
+  - [`docs/ROADMAP.md`](../ROADMAP.md)
 
 ---
 

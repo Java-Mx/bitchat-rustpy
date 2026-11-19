@@ -31,8 +31,11 @@ Welcome to the central documentation index for **BitChat** (`v0.3.3`), a peer-to
 
 | Document | Description |
 | :--- | :--- |
-| [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) | Hybrid Python + Rust (`bitchat._bitchat_core`) system architecture, layer boundaries, threading/asyncio model, and component design. |
-| [`docs/ROADMAP.md`](ROADMAP.md) | 7-stage engineering roadmap from the current hybrid Python/Rust core (`v0.3.3`) through native transports to a 100% native Rust application. |
+| [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) | Hybrid Python + authoritative Rust (`bitchat._bitchat_core`) system architecture, layer boundaries, threading/asyncio model, and component design. |
+| [`docs/ROADMAP.md`](ROADMAP.md) | 7-stage engineering roadmap from the current hybrid Python/Rust core (`v0.3.3`, Stages 1–3 complete) through native transports to a 100% native Rust application. |
+| [`docs/release/V0.3.3-RELEASE-NOTES.md`](release/V0.3.3-RELEASE-NOTES.md) | Production release notes for `v0.3.3` (Phase 2.2) with verified cross-platform SHA-256 checksums. |
+| [`docs/release/V0.3.3-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md`](release/V0.3.3-RUST-MIGRATION-PERFORMANCE-AND-SECURITY-IMPACT.md) | Detailed `v0.3.2 → v0.3.3` Rust migration impact report with measured benchmarks, FFI/memory analysis, and security evidence. |
+| [`docs/release/PHASE-2.2-IMPLEMENTATION-AND-VERIFICATION-REPORT.md`](release/PHASE-2.2-IMPLEMENTATION-AND-VERIFICATION-REPORT.md) | Complete Phase 2.2 audit, implementation record, anti-pattern audit, and release verification evidence. |
 | [`docs/REQUIREMENTS.md`](REQUIREMENTS.md) | Functional (`FR-*`) and Non-Functional (`NFR-*`) requirements matrix with current `v0.3.3` implementation status. |
 | [`docs/DEVELOPMENT.md`](DEVELOPMENT.md) | Developer environment setup (`uv`, Rust `cargo`, `maturin`), testing, linting, benchmarking, and debugging guide. |
 | [`docs/RELEASE_PROCESS.md`](RELEASE_PROCESS.md) | Release engineering workflow, version synchronization checklist, CI/CD pipelines, packaging scripts, and artifact verification. |
