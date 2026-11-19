@@ -271,12 +271,21 @@ Measured using Python `tracemalloc` over 1,000 consecutive inbound encrypted DM 
 
 ## 20. Release Artifact Validation & Verified Checksums
 
-*(Synchronized with exact GitHub Release `v0.3.3` asset SHA-256 checksums and byte sizes after `.github/workflows/release.yml` completes.)*
+Published via GitHub Actions Release workflow run [`44473478669`](https://github.com/Java-Mx/bitchat-rustpy/actions/runs/44473478669) (all 4 jobs passed: Windows `3m16s`, Linux `12m51s`, macOS `arm64` `2m13s`, Publish `20s`) at [https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v0.3.3](https://github.com/Java-Mx/bitchat-rustpy/releases/tag/v0.3.3):
 
-- **Local Pre-Release Build Verification (Windows 11 x64):**
-  - `dist/BitChat-0.3.3-windows-x64.exe` — `19,552,212` bytes, SHA-256 `C01C57BD929C5BB2A97907D5B4A91D214F9FFC9D68F6BFB99BEB7860DB665E76`, CLI verified (`bitchat 0.3.3`, `--help`, `--startup status`).
-  - **Authenticode Status:** `NotSigned` (no commercial EV/OV signing certificate configured in environment).
-- **Published GitHub Release `v0.3.3` Checksums:** Recorded in post-release synchronization update below once `release.yml` publishes final runner-built artifacts.
+| Asset | Size | Verified SHA-256 |
+|---|---:|---|
+| `BitChat-0.3.3-windows-x64.exe` | `18,618,754` bytes (`17.76 MB`) | `BB0609FCE1B3A68A1EA358024FE501093D330CC092D1BD562EAC5FF124ECCEEC` |
+| `bitchat_0.3.3_amd64.deb` | `19,190,820` bytes (`18.30 MB`) | `6916C412824EC2A93343FEE39F8975C72613C41BE3D4B6BD453DF77B0A4592A6` |
+| `BitChat-0.3.3-x86_64.AppImage` | `21,755,199` bytes (`20.75 MB`) | `C96FB175C97DBC9C32FA160C8A97AA0E72572DBFF01728B7C48F70F82FD20156` |
+| `bitchat-0.3.3-cp312-abi3-win_amd64.whl` | `1,011,315` bytes (`987.61 KB`) | `3FA7A9608FDEF55005200264877CF7CEB3B3E24F6D8367B61DF8BA6D7CF8B48F` |
+| `bitchat-0.3.3-cp312-abi3-linux_x86_64.whl` | `1,036,731` bytes (`1012.43 KB`) | `4F2136A5070E0173A3C52E5AC21F56E3EB33D536B75CBC09673CFAF9A8A21BDF` |
+| `bitchat-0.3.3-cp312-abi3-macosx_11_0_arm64.whl` | `952,096` bytes (`929.78 KB`) | `6259AF88170F981D5D6C1F3395E976B24DF6FB85BC71628251A0BF173B4CBEE4` |
+| `bitchat-0.3.3.tar.gz` | `324,617` bytes (`317.01 KB`) | `8B96CAFB08564C20ED76C66F8FB2EF97DA00BC99005055105602706ED55F50D6` |
+| `Java-Mx.BitChat.yaml` | `1,672` bytes (`1.63 KB`) | `C440175BC3612E687A0FFBD1FEE4F6E14BE7C63AF79CC7EFADE285D136C235C4` |
+
+- **Authenticode Status:** `NotSigned` (no commercial EV/OV signing certificate configured in environment).
+- **Note on Flatpak bundle:** `packaging/linux/flatpak/io.github.java_mx.bitchat.metainfo.xml` is synchronized to `0.3.3`; Flathub runtime availability on `ubuntu-latest` did not emit a `.flatpak` bundle asset in run `44473478669`, so `.deb` and `.AppImage` are the published Linux binary installers for `v0.3.3`.
 
 ---
 
@@ -324,8 +333,11 @@ Measured using Python `tracemalloc` over 1,000 consecutive inbound encrypted DM 
 ## 25. Commit, Tag, Push & Release Record
 
 - **Author / Committer:** `Java-Mx <96059233+Java-Mx@users.noreply.github.com>`
-- **Release Tag:** `v0.3.3`
-- **GitHub Release & Website Deployment Record:** Synchronized in the post-release verification update immediately following completion of `.github/workflows/release.yml` and `.github/workflows/website.yml`.
+- **Phase 2.2 / `v0.3.3` Release Commit:** `e87685c584fb5d1101383faae3054b4a2b3dbc0c` (`feat(protocol): integrate authoritative Rust Noise XX, NativeProtocolEngine, and release v0.3.3`)
+- **Windows `.pyd` File-Lock Build Fix Commit:** `8a90d80a9eb2be0ec79c14f0a32f115268f8e73a` (`fix(windows): handle native extension file locks during editable builds`) — added `scripts/build_native.py` (OS-serialized build lock, Win32 `CreateFileW` + Restart Manager exact PID detection for both `src/bitchat/_bitchat_core.pyd` and `.venv/Scripts/bitchat.exe`, post-build stderr classification, import verification), `scripts/dev-windows.ps1` (PowerShell 5.1 workflow), `[tool.uv] cache-keys`, and `tests/unit/test_windows_native_build.py` (6/6 passing).
+- **Release Tag:** `v0.3.3` (annotated tag pointing to `e87685c584fb5d1101383faae3054b4a2b3dbc0c`)
+- **GitHub Actions Release Run:** [`44473478669`](https://github.com/Java-Mx/bitchat-rustpy/actions/runs/44473478669) — **SUCCESS** (Windows `.exe` + WinGet + `.whl`, Linux `.deb` + `.AppImage` + `.whl` + `.tar.gz`, macOS `arm64` `.whl`, 15 assets published).
+- **Official Website Deployment:** `.github/workflows/website.yml` — **VERIFIED LIVE** at [https://java-mx.github.io/bitchat-rustpy/](https://java-mx.github.io/bitchat-rustpy/).
 
 ---
 
